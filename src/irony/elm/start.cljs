@@ -9,7 +9,9 @@
     (goog.async AnimationDelay)))
 
 (defn make
-  [root init target]
+  [root target
+   & {:keys [state-atom]
+      :or   {state-atom (atom)}}]
   (let [model (elm/model root)
         action (elm/action root)
         update (elm/update root)
@@ -17,47 +19,57 @@
 
         validate-model! (s/validator model)
         validate-action! (s/validator action)
-        state (atom (validate-model! init))
+
         is-dirty? (atom true)
+        updater (atom)
+        loop-fn (atom)
+
+        invalidate! (fn [] (reset! is-dirty? true))
         commit! (fn [action]
-                  (let [old-state @state
+                  (let [old-state @state-atom
                         new-state (update (validate-action! action) old-state)]
                     (when-not (identical? new-state old-state)
                       (validate-model! new-state)
-                      (reset! is-dirty? true)
-                      (reset! state new-state))))
+                      (invalidate!)
+                      (reset! state-atom new-state))))
         try-render! (fn []
                       (if @is-dirty?
                         (do
-                          (q/render (view @state commit!) target)
+                          (q/render (view @state-atom commit!) target)
                           (reset! is-dirty? false)
                           true)
                         false))
-        updater (atom nil)
         clean! (fn []
                  (when-let [^AnimationDelay timer @updater]
                    (.stop timer)
                    (.dispose timer)
                    (reset! updater nil)))
-        stop! (fn []
-                (clean!)
-                (q/unmount target))
-        loop-fn (atom nil)
         loop! (fn []
                 (clean!)
                 (try-render!)
                 (reset! updater (doto (AnimationDelay. @loop-fn)
                                   .start)))
+        stop! (fn []
+                (clean!)
+                (q/unmount target))
         start! (fn []
-                 (reset! is-dirty? true)
+                 (invalidate!)
                  (loop!))]
 
-    (reset! loop-fn loop!) ; Tie the recursive loop
+    ; Tie the recursive loop. In the above code we have co-recursive
+    ; dependencies between commit! and loop!. To resolve this, the loop is
+    ; broken with an atom, loop-fn, that we have to establish the value of
+    ; after all the functions have been defined.
+    ;
+    ; NOTE: This may have some stack frame issues. How can we be sure that
+    ; they're getting unwound?
+    (reset! loop-fn loop!)
 
-    {:state state
+    {:state state-atom
      :updater updater
      :is-dirty? is-dirty?
 
+     :invalidate! invalidate!
      :try-render! try-render!
      :start! start!
      :stop! stop!}))

@@ -1,4 +1,4 @@
-(ns irony.dom
+(ns irony.elm.dom
   (:refer-clojure :exclude [time map meta])
   (:require-macros [quiescent.dom :as dm])
   (:require [quiescent.factory]

@@ -1,4 +1,4 @@
-(ns irony.bootstrap
+(ns irony.cs.bootstrap
   (:require
     [quiescent.factory :as f :include-macros true]
     [cljsjs.react-bootstrap]))

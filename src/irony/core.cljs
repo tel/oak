@@ -15,4 +15,3 @@
   (stop)
   (start))
 
-(start)

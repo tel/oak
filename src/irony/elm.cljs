@@ -3,7 +3,7 @@
   (:require
     [schema.core :as s]
     [quiescent.core :as q]
-    [irony.dom :as d]))
+    [irony.elm.dom :as d]))
 
 ; -----------------------------------------------------------------------------
 ; Protocols and types
@@ -17,30 +17,52 @@
           of messages emitted from and routed to the 'update' function of
           this component. These actions indicate state changes occurring
           over the component's model.")
-  (update [this])
-  (view [this]))
+  (update [this]
+          "The 'update' mechanism of an Elm component relates a state
+          transition to each valid action. It's a 'reducer' over streams of
+          actions producing a trajectory through model space.")
+  (view [this]
+        "The 'view' function describes the virtual dom interpretation of the
+        model space. It is a function from a model state and a 'dispatcher'
+        function to a React virtual dom tree."))
 
 (defn updatef
   "Given a component and an action for that component produce this component's
-  model transition function over that action."
-  [this action]
-  (fn [model] ((update this) action model)))
+  model transition function over that action. If the model is also provided
+  then the result model is returned."
+  ([this action] (fn [model] ((update this) action model)))
+  ([this action model] ((update this) action model)))
 
 (deftype Component [model action update view]
   IElm
+  ; A component is just a concrete description of the IElm interface.
   (model [_] model)
   (action [_] action)
   (update [_] update)
   (view [_] view)
 
+  IAssociative
+  (-contains-key? [_ k] (#{:model :action :update :view} k))
+  (-assoc [_ k v]
+    (case k
+      :model (Component. v action update view)
+      :action (Component. model v update view)
+      :update (Component. model action v view)
+      :view (Component. model action update v)))
+
   IFn
+  ; We let the invocation of components run their view function since this is
+  ; the most popular place for a component to be used.
   (-invoke [_ state dispatch] (view state dispatch)))
 
 (defn map->Component [{:keys [model action update view]}]
   (Component. model action update view))
 
 (defn reify
-  "Reify any type implementing IElm into a Elm Component record type."
+  "Reify any type implementing IElm into a Elm Component record type. This is
+   useful if an implementer of the protocol either does some work whenever
+   the IElm methods are called and you'd like to cache it OR when you'd like
+   to get the IFn behavior of a fully instantiated Component value."
   [it]
   (map->Component
     {:model (model it)
