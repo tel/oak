@@ -10,7 +10,11 @@
 
 (defn make
   [root init target]
-  (let [{:keys [model action update view]} (elm/as-record root)
+  (let [model (elm/model root)
+        action (elm/action root)
+        update (elm/update root)
+        view (elm/view root)
+
         validate-model! (s/validator model)
         validate-action! (s/validator action)
         state (atom (validate-model! init))

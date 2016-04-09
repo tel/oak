@@ -1,5 +1,5 @@
 (ns irony.elm
-  (:refer-clojure :exclude [update])
+  (:refer-clojure :exclude [reify update])
   (:require
     [schema.core :as s]
     [quiescent.core :as q]
@@ -20,18 +20,26 @@
   (update [this])
   (view [this]))
 
-(defn updatef [this action model] ((update this) action model))
-(defn updatefs [this action] (fn [model] ((update this) action model)))
-(defn viewf [this model dispatch] ((view this) model dispatch))
+(defn updatef
+  "Given a component and an action for that component produce this component's
+  model transition function over that action."
+  [this action]
+  (fn [model] ((update this) action model)))
 
-(defrecord Component [model action update view]
+(deftype Component [model action update view]
   IElm
   (model [_] model)
   (action [_] action)
   (update [_] update)
-  (view [_] view))
+  (view [_] view)
 
-(defn as-record
+  IFn
+  (-invoke [_ state dispatch] (view state dispatch)))
+
+(defn map->Component [{:keys [model action update view]}]
+  (Component. model action update view))
+
+(defn reify
   "Reify any type implementing IElm into a Elm Component record type."
   [it]
   (map->Component
@@ -125,7 +133,7 @@
                             (let [subc (get routes key)
                                   subm (get model key)
                                   subd (fn [action] (dispatch [key action]))]
-                              (viewf subc subm subd)))
+                              (subc subm subd)))
             view-set (map-keys build-subview routes)]
         (view-composition view-set dispatch)))))
 

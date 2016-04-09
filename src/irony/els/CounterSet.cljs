@@ -13,14 +13,14 @@
     [target inner-action]
     (update
       model target
-      (elm/updatefs Counter/root inner-action))))
+      (elm/updatef Counter/root inner-action))))
 
 (defn viewer [model dispatch]
   (apply d/div {}
          (d/button {:onClick (fn [_] (dispatch :new))} "New Counter")
          (map-indexed
            (fn [ix inner-model]
-             (elm/viewf Counter/root inner-model #(dispatch [ix %])))
+             (Counter/root inner-model #(dispatch [ix %])))
            model)))
 
 (def root
