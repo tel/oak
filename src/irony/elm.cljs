@@ -16,6 +16,7 @@
   (view [this]))
 
 (defn updatef [this action model] ((update this) action model))
+(defn updatefs [this action] (fn [model] ((update this) action model)))
 (defn viewf [this model dispatch] ((view this) model dispatch))
 
 (defrecord Component [model action init update view]

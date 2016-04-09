@@ -1,7 +1,6 @@
 (ns irony.els.Counter
   (:require
     [irony.elm :as elm]
-    [irony.bootstrap :as bs]
     [schema.core :as s]
     [irony.dom :as d]))
 

@@ -1,5 +1,5 @@
 (ns irony.ui
   (:require
-    [irony.els.Counter :as Counter]))
+    [irony.els.CounterSet :as CounterSet]))
 
-(def root Counter/root)
+(def root CounterSet/root)
