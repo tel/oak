@@ -1,92 +1,129 @@
 (ns irony.elm
-  (:refer-clojure :exclude [reify])
+  (:refer-clojure :exclude [update])
   (:require
     [schema.core :as s]
     [quiescent.core :as q]
     [irony.dom :as d]))
 
+; -----------------------------------------------------------------------------
+; Protocols and types
+
 (defprotocol IElm
-  (state-schema [this])
-  (action-schema [this])
-  (base [this])
-  (reducer [this])
-  (renderer [this]))
+  (model [this])
+  (action [this])
+  (init [this])
+  (update [this])
+  (view [this]))
 
-(defn reduce [this action state]
-  (let [reducer-fn (reducer this)]
-    (reducer-fn action state)))
+(defn updatef [this action model] ((update this) action model))
+(defn viewf [this model dispatch] ((view this) model dispatch))
 
-(defn render [this state submit]
-  (let [render-fn (renderer this)]
-    (render-fn state submit)))
+(defrecord Component [model action init update view]
+  IElm
+  (model [_] model)
+  (action [_] action)
+  (init [_] init)
+  (update [_] update)
+  (view [_] view))
+
+(defn as-record
+  "Reify any type implementing IElm into a Elm Component record type."
+  [it]
+  (map->Component
+    {:model (model it)
+     :action (action it)
+     :init (init it)
+     :update (update it)
+     :view (view it)}))
+
+; -----------------------------------------------------------------------------
+; Component intros
+
+(defn make
+  "Construct a Elm-like component by defining the model, view, and update.
+  This function wraps Quiescent's component construction function allowing
+  you to specify React lifecycle callbacks and metadata according to that
+  convention. See Quiescent's documentation for details on the following
+  extra options [:keyfn, :name, :on-mount, :on-update, :on-unmount,
+  :on-render, :will-enter, :did-enter, :will-leave, :did-leave]."
+  [& {:keys [model action init update view]
+      :or {model s/Any
+           action s/Any
+           init nil
+           update (fn [_ s] s)}
+      :as options}]
+  (let [component-keys [:model :action :init :update :view]
+        quiescent-opts (apply dissoc options component-keys)
+        quiescence (q/component view quiescent-opts)
+        component-opts (assoc (select-keys options component-keys)
+                         :view quiescence)]
+    (map->Component component-opts)))
 
 (defn ^:private map-keys [f hashmap]
   (into {} (map (fn [p] [(key p) (f (val p))])) hashmap))
 
-(extend-protocol IElm
-  PersistentHashMap
+(defn parallel
+  "Construct a Component from a set of named Elm components operating 'in
+  parallel'. Generally compositions of components are better performed by
+  creating a new component which explicitly embodies the exact composition
+  desired, but this combinator can be used in situations where the desired
+  composition is very lightweight and close if not identical to the parallel,
+  non-interacting composition of the subcomponents.
 
-  ; The product of all inner state schemata
-  (state-schema [this] (map-keys state-schema this))
+  A component constructed as (parallel routes) expects
+  that routes is a map from keys to components. The resulting combination
+  component operates by maintaining the models of each subcomponent in
+  parallel. By default the views of each subcomponent are merged sequentially
+  into a div and the actions are submitted completely independently of one
+  another (no crosstalk). These last two behaviors can be customized,
+  however, through the :view-composition and :update-transform keys.
 
-  ; The product of all the inner base states
-  (base [this] (map-keys base this))
+  The :view-composition key is similar to a :view key in a normal component
+  but with a special model and action built from the subcomponents: the view
+  composition model is a map from the keys in your routes to fully-rendered
+  views for each subcomponent and the dispatch operates on actions of form
+  [key action] where key corresponds to a key in routes and action is a
+  action of the form corresponding to the subcomponent at that key.
 
-  ; Actions take the form [key inner-actions] where key indicates which inner
-  ; Elm component will receive the action.
-  (action-schema [this]
-    (let [preds-and-schemas
-          (mapcat
-            (fn [[key-here inner]]
-              (let [pred (fn [[key action]] (= key-here key))
-                    schema (action-schema inner)]
-                [pred schema]))
-            this)]
-      (apply s/conditional preds-and-schemas)))
+  The :update-transform key must be a function from update functions to
+  update functions over actions of the same form as seen above in
+  :view-composition and models of the form of a map from your routes keys to
+  the models of each corresponding subcomponent. The 'original' update
+  function received in the transform will pass each action along to its
+  corresponding subcomponent model update function, but more sophisticated
+  'wire crossing' update functions can be crafted here as necessary."
 
-  ; Each action is routed to each inner reducer which (in parallel) updates
-  ; each component state
-  (reducer [this]
-    (let [reducer-set (map-keys reducer this)]
-      (fn [[key action] state]
-        (update state key (partial (get reducer-set key) action)))))
+  [routes
+   & {:keys [view-composition update-transform]
+      :or {update-transform identity
+           view-composition (fn [views _dispatch]
+                              (apply d/div (vals views)))}}]
 
-  ; The default render function just slaps all inner render results into a
-  ; big div
-  (renderer [this submit props]
-    (let [render-map (map-keys renderer this)
-          submit-map (into {} (map (fn [[k v]] (submit [k v]))) this)]
-      (apply d/div
-             (into []
-                   (map (fn [[k this-props]]
-                          (let [this-render (get render-map k)
-                                this-submit (get submit-map k)]
-                            (this-render this-props this-submit))))
-                   props)))))
+  (make
+    :init (map-keys init routes)
+    :model (map-keys model routes)
 
-(defrecord Component [state action base reducer renderer]
-  IElm
-  (state-schema [_] state)
-  (action-schema [_] action)
-  (base [_] base)
-  (reducer [_] reducer)
-  (renderer [_] renderer))
+    :action
+    (let [match-keyword-pred (fn [kw-here] (fn [pair] (= kw-here (key pair))))
+          get-pred-and-schema (fn [pair] [(match-keyword-pred (key pair))
+                                          (action (val pair))])
+          preds-and-schemas (mapcat get-pred-and-schema routes)]
+      (apply s/conditional preds-and-schemas))
 
-(defn reify [it]
-  (->Component
-    (state-schema it)
-    (action-schema it)
-    (base it)
-    (reducer it)
-    (renderer it)))
+    :update
+    (let [update-set (map-keys update routes)]
+      (update-transform
+        (fn [[key action] model]
+         (let [update-fn (get update-set key)]
+           (cljs.core/update model key (partial update-fn action))))))
 
-(defn make
-  [& {:keys [state action base reducer render]
-      :or {state s/Any
-           action s/Any
-           base nil
-           reducer (fn [_ s] s)}
-      :as options}]
-  (let [quiescent-opts (dissoc options :state :action :base :reducer :render)
-        quiescence (q/component render quiescent-opts)]
-    (->Component state action base reducer quiescence)))
+    :view
+    (fn [model dispatch]
+      (let [build-subview (fn [key]
+                            (let [subc (get routes key)
+                                  subm (get model key)
+                                  subd (fn [action] (dispatch [key action]))]
+                              (viewf subc subm subd)))
+            view-set (map-keys build-subview routes)]
+        (view-composition view-set dispatch)))))
+

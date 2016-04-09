@@ -8,10 +8,11 @@
                  [quiescent/quiescent "0.3.0"]
                  [datascript "0.15.0"]
                  [mount "0.1.10"]
-                 [prismatic/schema "1.1.0"]]
+                 [prismatic/schema "1.1.0"]
+                 [cljsjs/react-bootstrap "0.28.1-1" :exclusions [[cljsjs/react]]]]
   :plugins [[lein-figwheel "0.5.1"]
             [lein-cljsbuild "1.1.3"]]
-  :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
+  :clean-targets ^{:protect false} ["resources/public/js" "target"]
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/"]
                         :figwheel {:on-jsload "irony.core/reload"}
