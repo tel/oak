@@ -1,0 +1,13 @@
+target/
+classes/*
+checkouts/*
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+.idea
+irony.iml
+resources/public/js
+figwheel_server.log
