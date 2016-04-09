@@ -8,10 +8,12 @@
 
 (defn updater [action model]
   (match action
-    :new (conj model 0)
+    :new (conj model (Counter/new-state 0))
 
     [target inner-action]
-    (update model target (elm/updatefs Counter/root inner-action))))
+    (update
+      model target
+      (elm/updatefs Counter/root inner-action))))
 
 (defn viewer [model dispatch]
   (apply d/div {}
@@ -28,6 +30,6 @@
     :action (s/cond-pre
               (s/eq :new)
               [(s/one s/Int :target) (elm/action Counter/root)])
-    :init [1 2 3]
+    :init []
     :update updater
     :view viewer))

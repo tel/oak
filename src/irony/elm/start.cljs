@@ -16,7 +16,6 @@
         state (atom (validate-model! init))
         is-dirty? (atom true)
         commit! (fn [action]
-                  (println action)
                   (let [old-state @state
                         new-state (update (validate-action! action) old-state)]
                     (when-not (identical? new-state old-state)
@@ -31,19 +30,25 @@
                           true)
                         false))
         updater (atom nil)
+        clean! (fn []
+                 (when-let [^AnimationDelay timer @updater]
+                   (.stop timer)
+                   (.dispose timer)
+                   (reset! updater nil)))
         stop! (fn []
-                (when-let [^AnimationDelay timer @updater]
-                  (.stop timer)
-                  (.dispose timer)
-                  (reset! updater nil)))
-        start-fn (atom nil)
+                (clean!)
+                (q/unmount target))
+        loop-fn (atom nil)
+        loop! (fn []
+                (clean!)
+                (try-render!)
+                (reset! updater (doto (AnimationDelay. @loop-fn)
+                                  .start)))
         start! (fn []
-                 (stop!)
-                 (try-render!)
-                 (reset! updater (doto (AnimationDelay. @start-fn)
-                                   .start)))]
+                 (reset! is-dirty? true)
+                 (loop!))]
 
-    (reset! start-fn start!) ; Tie the recursive loop!
+    (reset! loop-fn loop!) ; Tie the recursive loop
 
     {:state state
      :updater updater

@@ -15,3 +15,5 @@
            this-app)
   :stop (let [stop-fn (:stop! @app)]
           (stop-fn)))
+
+(defn state [] (clj->js @(:state @app)))
