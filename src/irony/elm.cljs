@@ -9,9 +9,14 @@
 ; Protocols and types
 
 (defprotocol IElm
-  (model [this])
-  (action [this])
-  (init [this])
+  (model [this]
+         "The 'model' of an Elm component is a Schema describing the shape of
+          the (immutable) data which substantiates this component.")
+  (action [this]
+          "The 'action' of an Elm component is a Schema describing the shape
+          of messages emitted from and routed to the 'update' function of
+          this component. These actions indicate state changes occurring
+          over the component's model.")
   (update [this])
   (view [this]))
 
@@ -19,11 +24,10 @@
 (defn updatefs [this action] (fn [model] ((update this) action model)))
 (defn viewf [this model dispatch] ((view this) model dispatch))
 
-(defrecord Component [model action init update view]
+(defrecord Component [model action update view]
   IElm
   (model [_] model)
   (action [_] action)
-  (init [_] init)
   (update [_] update)
   (view [_] view))
 
@@ -33,7 +37,6 @@
   (map->Component
     {:model (model it)
      :action (action it)
-     :init (init it)
      :update (update it)
      :view (view it)}))
 
@@ -47,13 +50,12 @@
   convention. See Quiescent's documentation for details on the following
   extra options [:keyfn, :name, :on-mount, :on-update, :on-unmount,
   :on-render, :will-enter, :did-enter, :will-leave, :did-leave]."
-  [& {:keys [model action init update view]
+  [& {:keys [model action update view]
       :or {model s/Any
            action s/Any
-           init nil
            update (fn [_ s] s)}
       :as options}]
-  (let [component-keys [:model :action :init :update :view]
+  (let [component-keys [:model :action :update :view]
         quiescent-opts (apply dissoc options component-keys)
         quiescence (q/component view quiescent-opts)
         component-opts (assoc (select-keys options component-keys)
@@ -101,7 +103,6 @@
                               (apply d/div (vals views)))}}]
 
   (make
-    :init (map-keys init routes)
     :model (map-keys model routes)
 
     :action

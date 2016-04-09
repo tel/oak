@@ -28,7 +28,7 @@
       {:onClick (fn [_] (dispatch :inc))}
       "+")))
 
-(defn new-state
+(defn init
   "Construct a new state for a Counter based on its initial count"
   [initial-count]
   initial-count)

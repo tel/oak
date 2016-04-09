@@ -8,7 +8,7 @@
 
 (defn updater [action model]
   (match action
-    :new (conj model (Counter/new-state 0))
+    :new (conj model (Counter/init 0))
 
     [target inner-action]
     (update
@@ -30,6 +30,7 @@
     :action (s/cond-pre
               (s/eq :new)
               [(s/one s/Int :target) (elm/action Counter/root)])
-    :init []
     :update updater
     :view viewer))
+
+(def init [])

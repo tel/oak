@@ -9,8 +9,8 @@
     (goog.async AnimationDelay)))
 
 (defn make
-  [root target]
-  (let [{:keys [model action init update view]} (elm/as-record root)
+  [root init target]
+  (let [{:keys [model action update view]} (elm/as-record root)
         validate-model! (s/validator model)
         validate-action! (s/validator action)
         state (atom (validate-model! init))
