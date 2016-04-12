@@ -53,6 +53,7 @@
   IFn
   ; We let the invocation of components run their view function since this is
   ; the most popular place for a component to be used.
+  (-invoke [_ state] (view state (fn [a] nil)))
   (-invoke [_ state dispatch] (view state dispatch)))
 
 (defn map->Component [{:keys [model action update view]}]
@@ -85,7 +86,12 @@
            action s/Any
            update (fn [_ s] s)}
       :as options}]
-  (let [component-keys [:model :action :update :view]
+  (let [options (assoc options
+                  :model model
+                  :action action
+                  :update update
+                  :view view)
+        component-keys [:model :action :update :view]
         quiescent-opts (apply dissoc options component-keys)
         quiescence (q/component view quiescent-opts)
         component-opts (assoc (select-keys options component-keys)

@@ -1,18 +1,18 @@
 (ns irony.app
   (:require
     [irony.elm.start :as elm-start]
-    [irony.cs.counters :as counters]
+    [irony.ui :as ui]
     [mount.core :as mount :include-macros true]))
 
 (def mount-point
   (.getElementById js/document "app"))
 
-(defonce ^:export state-atom (atom counters/Set-init))
+(defonce ^:export state-atom (atom nil))
 
 (declare app)
 (mount/defstate app
   :start (let [this-app (elm-start/make
-                          counters/Set mount-point
+                          ui/ui mount-point
                           :state-atom state-atom)
                start-fn (:start! this-app)]
            (start-fn)
@@ -29,7 +29,7 @@
   "In the event that the application state ends up stuck use this function to
    reset it to the initial state."
   []
-  (reset! state-atom counters/Set-init)
+  (reset! state-atom nil)
   ((:invalidate! @app))
   ((:try-render! @app)))
 
