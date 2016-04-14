@@ -15,7 +15,6 @@
   (let [model (elm/model root)
         action (elm/action root)
         update (elm/update root)
-        view (elm/view root)
 
         validate-model! (s/validator model)
         validate-action! (s/validator action)
@@ -23,6 +22,7 @@
         is-dirty? (atom true)
         updater (atom)
         loop-fn (atom)
+        previous-queries (atom {})
 
         invalidate! (fn [] (reset! is-dirty? true))
         commit! (fn [action]
@@ -34,8 +34,11 @@
                       (reset! state-atom new-state))))
         try-render! (fn []
                       (if @is-dirty?
-                        (do
-                          (q/render (view @state-atom commit!) target)
+                        (let [queries (atom {})
+                              ctx (elm/make-context commit! queries)
+                              vtree (root @state-atom ctx)]
+                          (q/render vtree target)
+                          ;(println "QUERIES SEEN: " @queries)
                           (reset! is-dirty? false)
                           true)
                         false))

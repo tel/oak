@@ -16,18 +16,18 @@
     :action (s/enum :inc :dec)
 
     :update
-    (fn updater [action model]
+    (fn updater [action state]
       (case action
-        :inc (inc model)
-        :dec (dec model)))
+        :inc (inc state)
+        :dec (dec state)))
 
     :view
-    (fn viewer [model dispatch]
+    (fn viewer [{:keys [state]} ctx]
       (letfn [(clicker [action body]
-                (d/button {:onClick (fn [_] (dispatch action))} body))]
+                (d/button {:onClick (fn [_] (elm/act ctx action))} body))]
         (d/div {}
           (clicker :dec "-")
-          (d/div {} (str model))
+          (d/div {} (str state))
           (clicker :inc "+"))))))
 
 (defn WithControls-init
@@ -38,21 +38,23 @@
   (elm/make
     :name "Counter-Single-Controlled"
     :model (elm/model Single)
+    :queries {:foo 1
+              :bar 2}
     :action (s/cond-pre
               (s/eq :remove)
               (elm/action Single))
     :update
-    (fn updater [action model]
+    (fn updater [action state]
       (case action
-        :remove model
-        (elm/updatef Single action model)))
+        :remove state
+        (elm/updatef Single action state)))
     :view
-    (fn viewer [model dispatch]
+    (fn viewer [{:keys [state]} ctx]
       (letfn [(clicker [action body]
-                (d/button {:onClick (fn [_] (dispatch action))} body))]
+                (d/button {:onClick (fn [_] (elm/act ctx action))} body))]
         (d/div {}
           (clicker :remove "Remove")
-          (Single model dispatch))))))
+          (Single state ctx))))))
 
 (def Set-init [])
 
@@ -73,24 +75,27 @@
               (s/eq :new)
               [(s/one s/Int :target) (elm/action WithControls)])
     :update
-    (fn updater [action model]
+    (fn updater [action state]
       (match action
-        :new (conj model (WithControls-init 0))
+        :new (conj state (WithControls-init 0))
 
         [target :remove]
-        (remove-at-index model target)
+        (remove-at-index state target)
 
         [target inner-action]
         (update
-          model target
+          state target
           (elm/updatef WithControls inner-action))))
+
     :view
-    (fn viewer [model dispatch]
+    (fn viewer [{:keys [state] :as props} ctx]
       (letfn [(clicker [action body]
-                (d/button {:onClick (fn [_] (dispatch action))} body))]
+                (d/button {:onClick (fn [_] (elm/act ctx action))} body))]
         (apply d/div {}
                (clicker :new "New Counter")
                (map-indexed
-                 (fn [ix inner-model]
-                   (WithControls inner-model #(dispatch [ix %])))
-                 model))))))
+                 (fn [ix inner-state]
+                   (WithControls
+                     inner-state
+                     (elm/address-to ctx (fn [action] [ix action]))))
+                 state))))))

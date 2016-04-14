@@ -7,7 +7,7 @@
 (def mount-point
   (.getElementById js/document "app"))
 
-(defonce ^:export state-atom (atom nil))
+(defonce ^:export state-atom (atom ui/init))
 
 (declare app)
 (mount/defstate app
@@ -29,7 +29,7 @@
   "In the event that the application state ends up stuck use this function to
    reset it to the initial state."
   []
-  (reset! state-atom nil)
+  (reset! state-atom ui/init)
   ((:invalidate! @app))
   ((:try-render! @app)))
 
