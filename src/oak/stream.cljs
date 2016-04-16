@@ -17,10 +17,9 @@
   values. Notably, a stream may *skip* if there is no `:chunk` value and it
   may *terminate* if there is no `:next` value. It may even do both
   signifying the end of the stream."
-  (:refer-clojure :exclude [chunk])
+  (:refer-clojure :exclude [chunk iterate range])
   (:require
     [oak.promise :as promise]))
-
 
 (defn chunk
   "An immediately returning finite stream."
@@ -44,10 +43,36 @@
   (promise/bind
     (unfold state)
     (fn [{:keys [next] :as result}]
-      (if next
-        (let [new-next (promise/bind next unfold)]
-          (assoc result :next new-next))
-        result))))
+      (promise/unit
+        (if-not next
+          result
+          (assoc result
+            :next (stateful next unfold)))))))
+
+(defn range
+  ([n] (range 0 n))
+  ([init n]
+   (stateful
+     init (fn [i]
+            (promise/unit
+              (if (< i n)
+                {:chunk [i]
+                 :next  (inc i)}
+                {}))))))
+
+(defn iterate
+  "Execute an action for each item in a stream. Perform a final action
+  optionally."
+  ([stream on-each] (iterate stream on-each (fn [])))
+  ([stream on-each on-end]
+   (promise/bind
+     stream
+     (fn [{:keys [chunk next]}]
+       (when chunk
+         (doseq [value chunk] (on-each value)))
+       (if-not next
+         (on-end)
+         (iterate next on-each on-end))))))
 
 (defn consume
   "Given a function `(reducer state value)` resulting in a new state we can
@@ -57,10 +82,19 @@
   [stream initial-state reducer]
   (promise/bind
     stream
-    (fn [{:keys [chunk next] :as result}]
+    (fn [{:keys [chunk next]}]
       (let [new-state (if-not chunk
                         initial-state
                         (reduce reducer initial-state chunk))]
         (if-not next
-          new-state
+          (promise/unit new-state)
           (consume next new-state reducer))))))
+
+(defn realize
+  "Consume the entirety of an (hopefully finite) stream, returning a vector."
+  [stream]
+  (promise/bind
+    (consume stream (transient []) conj!)
+    (fn [trans]
+      (promise/unit
+        (persistent! trans)))))
