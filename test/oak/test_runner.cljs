@@ -3,5 +3,6 @@
     [doo.runner :as doo :include-macros true]
     [oak.core-test]))
 
-(doo/doo-all-tests)
+(doo/doo-tests
+  'oak.core-test)
 
