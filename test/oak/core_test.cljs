@@ -2,5 +2,5 @@
   (:require
     [cljs.test :as t :include-macros true]))
 
-(t/deftest intentional-failure
-  (t/is (= true false)))
+(t/deftest stupid-test
+  (t/is (= true true)))
