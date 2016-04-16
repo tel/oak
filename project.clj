@@ -11,7 +11,8 @@
             [lein-cljsbuild "1.1.3"]
             [lein-doo "0.1.6"]]
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
-  :doo {:paths {:karma "node_modules/.bin/karma"}}
+  :doo {:paths {:chrome "chrome --no-sandbox"
+                :karma "node_modules/.bin/karma"}}
   :cljsbuild
   {:builds [{:id "test"
              :source-paths ["src" "test"]
