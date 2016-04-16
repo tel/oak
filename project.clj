@@ -13,7 +13,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [env/faker "0.4.0"]]
   :plugins [[lein-figwheel "0.5.1"]
-            [lein-cljsbuild "1.1.3"]]
+            [lein-cljsbuild "1.1.3"]
+            [lein-doo "0.1.6"]]
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/"]
