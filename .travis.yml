@@ -1,6 +1,16 @@
 language: clojure
 lein: lein2
 script: lein2 doo slimer test once
+env:
+  - SLIMERJSLAUNCHER=$(which firefox) DISPLAY=:99.0 PATH=$TRAVIS_BUILD_DIR/slimerjs:$PATH
+addons:
+  firefox: "24.0"
+before_script:
+  - "sh -e /etc/init.d/xvfb start"
+  - "echo 'Installing Slimer'"
+  - "wget http://download.slimerjs.org/v0.8/slimerjs-0.8.3.zip"
+  - "unzip slimerjs-0.8.3.zip"
+  - "mv slimerjs-0.8.3 ./slimerjs"
 cache:
   directories:
   - $HOME/.m2
