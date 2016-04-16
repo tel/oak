@@ -10,4 +10,11 @@
   :plugins [[lein-figwheel "0.5.1"]
             [lein-cljsbuild "1.1.3"]
             [lein-doo "0.1.6"]]
-  :clean-targets ^{:protect false} ["resources/public/js" "target"])
+  :clean-targets ^{:protect false} ["resources/public/js" "target"]
+  :doo {:paths {:karma "node_modules/.bin/karma"}}
+  :cljsbuild
+  {:builds [{:id "test"
+             :source-paths ["src" "test"]
+             :compiler {:output-to "resources/public/js/testable.js"
+                        :main oak.test_runner
+                        :optimizations :none}}]})

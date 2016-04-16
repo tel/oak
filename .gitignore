@@ -8,6 +8,8 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 .idea
-irony.iml
+oak.iml
 resources/public/js
 figwheel_server.log
+out/
+node_modules/

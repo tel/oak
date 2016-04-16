@@ -1,0 +1,11 @@
+{
+  "name": "oak",
+  "private": true,
+  "devDependencies": {
+    "karma": "^0.13.22",
+    "karma-chrome-launcher": "^0.2.3",
+    "karma-cli": "^0.1.2",
+    "karma-cljs-test": "^0.1.0",
+    "karma-safari-launcher": "^0.1.1"
+  }
+}
