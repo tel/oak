@@ -21,6 +21,14 @@
   (:require
     [schema.core :as s]))
 
+; TODO Oracles, being async, would benefit a lot from selective receives in
+; the step function (a la Erlang). The heart of this is that a selective receive
+; can be used to simplify state management when multiple events chain together.
+; The API here is a little tricky since on one hand we'd need to pass in the
+; "receive" function and on the other hand we'd want to use Clojure's pattern
+; matching macro to make it work, but the benefits could be large for complex
+; Oracles. TBI!
+
 ; -----------------------------------------------------------------------------
 ; Utilities
 
@@ -74,12 +82,15 @@
     :event (apply s/cond-pre
                   (map (fn [[k v]] (s/pair k :index (event v) :subevent))
                        oracle-map))
+
     :step
     (fn [[index event] state]
       (update state index (step (get oracle-map index) event)))
+
     :respond
     (fn [[index query]]
       (respond (get oracle-map index) query))
+
     :refresh
     (fn [state queries submit]
       (let [querysets (reduce
