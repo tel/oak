@@ -13,8 +13,19 @@
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
   :doo {:paths {:chrome "chrome --no-sandbox"
                 :karma "node_modules/.bin/karma"}}
+  :profiles
+  {:dev {:dependencies [[devcards "0.2.1-6"]]}}
+
   :cljsbuild
-  {:builds [{:id "test"
+  {:builds [{:id "example"
+             :source-paths ["ex"]
+             :figwheel {:devcards true}
+             :compiler {:main oak-ex.core
+                        :asset-path "js/out"
+                        :output-to "resources/public/js/example.js"
+                        :output-dir "resources/public/js/out"
+                        :source-map-timestamp true}}
+            {:id "test"
              :source-paths ["src" "test"]
              :compiler {:output-to "resources/public/js/testable.js"
                         :output-dir "resources/public/js/out"

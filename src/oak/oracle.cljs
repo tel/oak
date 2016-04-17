@@ -19,7 +19,8 @@
   allowed! All of the side effects occur during the 'research' phase offering a
   mechanism for asynchronous data loading."
   (:require
-    [schema.core :as s]))
+    [schema.core :as s]
+    [oak.core :as oak]))
 
 ; TODO Oracles, being async, would benefit a lot from selective receives in
 ; the step function (a la Erlang). The heart of this is that a selective receive
@@ -50,10 +51,23 @@
   ([oracle action state] ((stepf oracle) action state)))
 
 (defn respond
-  [oracle query] ((respondf oracle) query))
+  ([oracle cache] (fn respond-to-query [query] (respond oracle cache query)))
+  ([oracle cache query] ((respondf oracle) cache query)))
 
 (defn refresh
-  [oracle state queries submit] ((refreshf oracle) state queries submit))
+  [oracle state queries submit]
+  ((refreshf oracle) state queries submit))
+
+(defn substantiate
+  "Given an Oak component, try to construct its query results."
+  [oracle cache component state]
+  (let [base-responder (respond oracle cache)
+        query-capture (atom #{})
+        q (fn execute-query [query]
+            (swap! query-capture conj query)
+            (base-responder query))]
+    {:result (oak/query component state q)
+     :queries @query-capture}))
 
 ; -----------------------------------------------------------------------------
 ; Type
@@ -71,9 +85,18 @@
 ; -----------------------------------------------------------------------------
 ; Intro
 
+(def +default-options+
+  {:state (s/eq nil)
+   :event (s/cond-pre) ; never succeeds
+   :step  (fn default-step [_event state] state)
+   :respond (fn [_cache _query] nil)
+   :refresh (fn [_cache _queries _submit])})
+
 (defn make
-  [& {:keys [state event step respond refresh]}]
-  (Oracle. state event step respond refresh))
+  [& {:as options}]
+  (let [options (merge +default-options+ options)
+        {:keys [state event step respond refresh]} options]
+    (Oracle. state event step respond refresh)))
 
 (defn parallel
   [oracle-map]
