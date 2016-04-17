@@ -17,5 +17,6 @@
   {:builds [{:id "test"
              :source-paths ["src" "test"]
              :compiler {:output-to "resources/public/js/testable.js"
+                        :output-dir "resources/public/js/out"
                         :main oak.test_runner
                         :optimizations :none}}]})

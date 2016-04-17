@@ -11,5 +11,4 @@ pom.xml.asc
 oak.iml
 resources/public/js
 figwheel_server.log
-out/
 node_modules/

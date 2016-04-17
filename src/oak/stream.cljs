@@ -93,8 +93,15 @@
 (defn realize
   "Consume the entirety of an (hopefully finite) stream, returning a vector."
   [stream]
-  (promise/bind
-    (consume stream (transient []) conj!)
-    (fn [trans]
-      (promise/unit
-        (persistent! trans)))))
+  (promise/apply persistent! (consume stream (transient []) conj!)))
+
+(defn map
+  "Apply a function to every value in a stream."
+  ; TODO! Implement me
+  [f stream])
+
+(defn interleave
+  "Produce a new stream pulling from values of many substreams as greedily as
+   possible."
+  ; TODO! Implement me
+  [& streams])
