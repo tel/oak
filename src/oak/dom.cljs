@@ -1,8 +1,9 @@
 (ns oak.dom
   (:refer-clojure :exclude [time map meta])
   (:require
-    [quiescent.factory]
-    [quiescent.dom :as dm :include-macros true]))
+    [quiescent.factory :as factory]
+    [quiescent.dom :as dm :include-macros true]
+    [quiescent.dom.uncontrolled :as dm-u]))
 
 (declare
   a abbr address area article aside audio b base bdi bdo big blockquote body br
@@ -26,3 +27,6 @@
   title tr track u ul var video wbr circle g line path polygon polyline rect svg
   text)
 
+(def uinput (factory/factory (dm-u/uncontrolled-component "input" "input")))
+(def utextarea (factory/factory (dm-u/uncontrolled-component "textarea" "textarea")))
+(def uoption (factory/factory (dm-u/uncontrolled-component "option" "option")))

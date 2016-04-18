@@ -15,7 +15,10 @@
                 :karma "node_modules/.bin/karma"}}
   :profiles
   {:dev {:dependencies [[devcards "0.2.1-6"]
-                        [org.clojure/core.match "0.3.0-alpha4"]]}}
+                        [org.clojure/core.match "0.3.0-alpha4"]
+                        [funcool/httpurr "0.5.0"]
+                        [datascript "0.15.0"]
+                        [funcool/promesa "1.1.1"]]}}
 
   :cljsbuild
   {:builds [{:id "example"

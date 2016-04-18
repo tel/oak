@@ -5,7 +5,8 @@
     [oak.core :as oak]
     [schema.core :as s]
     [oak.dom :as d]
-    [devcards.util.edn-renderer :as edn-rend])
+    [devcards.util.edn-renderer :as edn-rend]
+    [promesa.core :as p])
   (:import
     (goog.i18n DateTimeFormat)))
 
@@ -28,9 +29,18 @@
              (let [{:keys [state cache]} @total-state
                    {:keys [result queries]} (oracle/substantiate oracle cache component state)
                    oracle-submit (fn oracle-submit [event]
-                                   (on-event [:oracle event])
-                                   (swap! total-state update
-                                          :cache (oracle/step oracle event)))
+                                   ; Why use a promise here?
+                                   ; We have to get state modifications out
+                                   ; of the render cycle. Without tossing a
+                                   ; delay on here they'll happen
+                                   ; synchronously and this will throw render
+                                   ; errors.
+                                   (p/then
+                                     (p/delay 0)
+                                     (fn [_]
+                                       (on-event [:oracle event])
+                                       (swap! total-state update
+                                              :cache (oracle/step oracle event)))))
                    local-submit (fn local-submit [event]
                                   (on-event [:local event])
                                   (swap! total-state update
@@ -54,7 +64,9 @@
                        :fontSize   "0.6em"}}
               (.format (DateTimeFormat. "KK:mm ss aa")
                        (:as-of state)))
-        (d/td {:style {:background    "#1b6"
+        (d/td {:style {:background    (case (:domain state)
+                                        :local "#1b6"
+                                        :oracle "#b16")
                        :height        "20px"
                        :lineHeight    "20px"
                        :padding       "3px 7px"
