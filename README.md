@@ -10,11 +10,71 @@ a design very similar to the Elm architecture which influenced
 Javascript's `redux` library---so if you know those technologies, this 
 will look pretty familiar.
 
+## Status
+
+*Alpha*. The Oak API is still under active investigation and is subject 
+to change. There is not yet a public release.
+
 ## Try it out!
 
 This repository is both the library and a Devcards environment of 
 examples. Download the repo and run `lein figwheel` to access the 
 examples.
+
+## Comparison to similar libraries
+
+Oak can be compared to other React wrapper libraries in various 
+languages and React itself to the degree that they take perspectives on 
+state management.
+
+- **Elm** Oak steals prodigiously from the 
+  ["Elm Architecture"](http://www.elm-tutorial.org/030_elm_arch/cover.html)
+  but ignores the notion of signals and mailboxes as those mostly don't 
+  matter for UI composition. Oak uses runtime schema validation instead
+  of static types to ensure that state and events are proper which is a
+  strict disadvantage in documentation and safety. Elm has no standard
+  notion of queries and instead uses "signal ports" to manage global 
+  state.
+  
+- **React** Oak's technology is based atop React although it is largely
+  agnostic to much of the technology there. Oak is React-compatible so 
+  that you can re-use your other React components if you like, but Oak is
+  significantly more strict about how state is managed and components 
+  updated. Essentially, Oak uses the props system alone and completely
+  ignores lifecycles and React component state.
+  
+- **Redux** Oak and Redux are both based on the Elm Architecture and its 
+  simple state-machine based perspective, but Redux splits the state 
+  management and component render components while Oak recognizes that 
+  for a lot of "local" state the state management system is shaped 
+  exactly the same as your component trees and takes advantage of that. 
+  Oak solves asynchronous state without invoking effects within 
+  components the way that Redux's "action creator" standard does. Of 
+  course, Redux is very flexible so there's nothing preventing it from
+  using a `:query`-like system, too.
+  
+- **Relay** (*Ed.* I'm not as familiar with this one). Oak uses 
+  composable queries but doesn't have a buy-in to a particular query
+  language. If you wanted to offer GraphQL Oak queries then you could do
+  this very naturally!
+  
+- **om.next** Oak and om.next both buy in heavily to the notion of having
+  component-level queries that compose (similar to Relay as well), but
+  for om.next these are sophisticated concepts tied into notions of 
+  component identity and data normalization. Oak doesn't demand or 
+  expect much at all from its Oracles excepting that they have a notion 
+  of a pure cache and state-machine like update mechanism.
+  
+- **Reagent** Oak has *vastly* simplified state management from the 
+  reactive update style of Reagent. This affords potentially lower 
+  performance, but it turns out that virtual DOM diffing really does 
+  solve this problem much of the time.
+  
+- **Re-frame** Oak relies not at all on global state and has a 
+  simplified flow with similar comparison as to Reagent. Additionally, 
+  it takes advantage of differentiating local and application state to
+  make it easier to compose local state with similar caveats as when
+  comparing to Redux.
 
 ## Concepts
 
@@ -55,7 +115,7 @@ information flows of nested applications with simple, pure functions.
 The wiring burden is highly distributed and each component sees all of 
 the state of the world it needs.
 
-## What is a component?
+### What is a component?
 
 A component is a set of 3 functions and 2 schemata. It is a spec for a
 fully functional web interface all by itself.
@@ -93,7 +153,7 @@ construct the initial state of your component. Users of your component
 are well-recommended to use it, too, in order to maintain the 
 abstractness of the component `:state`.
 
-### A simple example
+## A simple example
 
 An example component using only local state is a counter with increment 
 and decrement buttons. We use the `oak/make` function to build it. By 
