@@ -78,7 +78,7 @@ state management.
 
 ## Concepts
 
-*Components are rendered as pure functions of some local parameters*
+**Components are rendered as pure functions of some local parameters**
 
 At the core of any component is a pure function from an immutable value 
 to a ReactElement. Oak doesn't really care how you construct this 
@@ -86,13 +86,13 @@ function and is reasonably naive to choice of React wrappers. What's
 important is that to the greatest degree possible the entire state of 
 your component is reflected in this immutable parameter.
 
-*Applications are state machines, reductions of state over an event stream*
+**Applications are state machines, reductions of state over an event stream**
 
 Ultimately, an application's ("local") function is just a big reduction
 step. An "event" is generated from the UI and this triggers a transition
 of the current state to the next one.
 
-*Local state is different from "Application State"*
+**Local state is different from "Application State"**
 
 Local state and "application state" behave very differently. To draw the 
 line clearly, local state answers questions like "is my dropdown 
@@ -102,7 +102,7 @@ synchronously, and is shaped almost the same as your UI ReactElement
 tree. Application state is normalized, updates asynchronously, and is 
 shaped more like a SQL database.
 
-*State, events, reducers, and application state queries are all fractal*
+**State, events, reducers, and application state queries are all fractal**
 
 Oak encourages you to build up to the full complexity of your interface
 step-by-step by composing smaller fully functional "applications" 
