@@ -10,300 +10,188 @@ a design very similar to the Elm architecture which influenced
 Javascript's `redux` library---so if you know those technologies, this 
 will look pretty familiar.
 
-## Constant components
+## Try it out!
 
-Oak decomposes applications into components. The simplest components are
-*constant* components which are nothing more than a view function.
+This repository is both the library and a Devcards environment of 
+examples. Download the repo and run `lein figwheel` to access the 
+examples.
+
+## Concepts
+
+*Components are rendered as pure functions of some local parameters*
+
+At the core of any component is a pure function from an immutable value 
+to a ReactElement. Oak doesn't really care how you construct this 
+function and is reasonably naive to choice of React wrappers. What's 
+important is that to the greatest degree possible the entire state of 
+your component is reflected in this immutable parameter.
+
+*Applications are state machines, reductions of state over an event stream*
+
+Ultimately, an application's ("local") function is just a big reduction
+step. An "event" is generated from the UI and this triggers a transition
+of the current state to the next one.
+
+*Local state is different from "Application State"*
+
+Local state and "application state" behave very differently. To draw the 
+line clearly, local state answers questions like "is my dropdown 
+expanded?" while application state answers questions like "what is 
+User #10's first name?". Local state is denormalized, changes 
+synchronously, and is shaped almost the same as your UI ReactElement 
+tree. Application state is normalized, updates asynchronously, and is 
+shaped more like a SQL database.
+
+*State, events, reducers, and application state queries are all fractal*
+
+Oak encourages you to build up to the full complexity of your interface
+step-by-step by composing smaller fully functional "applications" 
+one-by-one. An Oak "component" is pretty much exactly that—a small, 
+fully functional application, and it expects that any other component 
+which embeds it supports that view.
+
+As it turns out, it's easy to compose the upward and downward 
+information flows of nested applications with simple, pure functions. 
+The wiring burden is highly distributed and each component sees all of 
+the state of the world it needs.
+
+## What is a component?
+
+A component is a set of 3 functions and 2 schemata. It is a spec for a
+fully functional web interface all by itself.
+
+```clojure
+:state ; a schema describing the local state
+:event ; a schema describing the events this component emits
+
+:query ; a function constructing the application state (different from 
+       ; :state) queries this component demands 
+       ; (this is described in more detail later)
+       
+:step  ; a (pure) function (event, state) -> state describing how
+       ; :events this component emits update the local :state
+       
+:view  ; a (pure) function (state, submit-fn) -> ReactElement which
+       ; interprets the state as a UI view. Here, submit-fn is a 
+       ; callback the UI view uses to submit :events to the :step 
+       ; function updating the :state.
+```
+
+When a component is run it's expected that it will be provided with an 
+initial `:state` to generate the `:view`. It's expected that the 
+`:query` is satisfied by a third-party "oracle" and used to construct 
+the `:state`. It is expected that any `:event` submitted in the `:view`
+is used by the `:step` function to update the `:state` and `:query` then,
+likely, triggering a re-render if the change is substantial.
+
+From the outside, *all* of the `:state`, `:event`, `:step`, `:query`, 
+and `:view` ought to be considered private and abstract. This key to 
+making composition scale.
+
+When working with components it's a good idea to provide a function to
+construct the initial state of your component. Users of your component 
+are well-recommended to use it, too, in order to maintain the 
+abstractness of the component `:state`.
+
+### A simple example
+
+An example component using only local state is a counter with increment 
+and decrement buttons. We use the `oak/make` function to build it. By 
+default this uses Quiescent to wrap up the `:view` function into a React 
+component factory letting React lifecycle hooks become available, but you
+can choose whatever ReactElement constructor you like (see the 
+`:build-factory` key)
 
 ```clojure
 (require '[oak.core :as oak])
 (require '[oak.dom :as d])
-
-(def my-component
-  (oak/make
-    {:name "My-Component"
-     :view 
-     (fn [_ _]
-       (d/h1 {:class "my-component"} "Hello world"))}))
-```
-
-As you can see, you use the `oak/make` function to create components and
-then define a `:view` function of two (currently ignored) arguments. 
-This view function should be pure and returns a virtual dom tree 
-constructed from functions from `oak.dom` or from the view functions of
-other Oak components as we will see now.
-
-```clojure
-(def my-layout
-  (oak/make
-    :name "My-Layout"
-    :view
-    (fn [_ context]
-      (d/section {:class "layout"}
-        (my-component nil context)))))
-```
-
-Here, another constant component is created demonstrating two new ideas.
-First, we see that Oak components implement `IFn` and can be called as
-regular functions of two arguments. Second, we see that the second 
-argument is called the "context" and must be passed to the inner 
-component.
-
-> Why don't we use dynamic binding to do context passing? This would 
-> let our components take only one argument, after all! Oak avoids this
-> for two reasons, though. First, explicit passing is simpler and makes
-> testing easier. Second, we'll see later that it's not at all uncommon
-> to *modify* the context before you pass it on to child components--- 
-> explicit passing makes this more obvious.
-
-## Parameterizing components
-
-Constant components are pretty boring. If `view` must be pure, then we 
-need to pass in interesting arguments for it to behave nicely! For this
-we introduce the *model*.
-
-```clojure
 (require '[schema.core :as s])
 
-(def number-display
-  (oak/make
-    {:name "Number-Display"
-     :model {:name s/Str :value s/Int}
-     :view 
-     (fn [model context]
-       (d/div {:class "number-display"} 
-         (d/strong (:name model))
-         (str (:value model))))}))
-```
-
-Here, we finally see what the first argument to our view function is: 
-the "model" for this component. "Model" (and "view") here steals from 
-MVC terminology so the right way to think is that the model describes 
-the "raw" data substantiating our view. We give our model a schema for 
-documentation and dev-time checking purposes.
-
-> Models aren't necessarily business objects. In Oak we take note that 
-> state within your UI is often relatively denormalized (repeated) and 
-> may not be easily kept in synch with the domain objects your code is
-> dealing in. Think of the view as a very thin layer over the model and
-> we'll see how to handle larger scale "domain state" later.
-
-Finally, we should show how to provide an instance of the model to your
-components---we just pass it in next to the context, of course!
-
-```clojure
-(def scoreboard
-  (oak/make
-    {:name "Scoreboard"
-     :model {:runs   (oak/model number-display)
-             :hits   (oak/model number-display)
-             :errors (oak/model number-display)
-     :view
-     (fn [model context]
-       (d/ul {:class "scoreboard"}
-         (d/li {} (number-display {:name "Runs" :value (:runs model)}))
-         (d/li {} (number-display {:name "Hits" :value (:hits model)}))
-         (d/li {} (number-display {:name "Errors" :value (:errors model)}))))}))
-```
-
-As a side note, take notice that we can use `oak/model` to get the model 
-schema of a component. This is highly recommended when composing 
-components! It'll protect your schema definition from changes to your 
-subcomponent models.
-
-## States in motion, actions and steps
-
-So far, we've created a pretty belabored templating system, but UIs need
-to support interaction! For this, we introduce the notion of the state 
-machine.
-
-First, an example:
-
-```clojure
 (def counter
   (oak/make
-    {:name "Counter"
-     :model s/Int
-     :action (s/enum :inc :dec)
-     :step
-     (fn [action model]
-       (case action
-         :inc (inc model)
-         :dec (dec model)))
-     :view
-     (fn [model context]
-       (d/div {:class "counter"}
-         (d/button {:onClick (fn [_] (oak/act context :inc))} "+")
-         (d/span {:class "number"} (str model))
-         (d/button {:onClick (fn [_] (oak/act context :dec))} "-")))}))
+    :name "Counter"
+    :state s/Int
+    :event (s/enum :inc :dec)
+    :step (fn [event state]
+             (case event
+               :inc (inc state)
+               :dec (dec state)))
+    :view (fn [state submit]
+             (d/div {}
+                (d/button {:onClick (fn [_] (submit :dec))} "-")
+                (d/span {} (str state))
+                (d/button {:onClick (fn [_] (submit :inc))} "+")))))
 ```
 
-What we can see here is that the view consists of a numeric display with 
-two buttons. On clicking the button we `oak/act` upon the `context` with
-a keyword. There's a new definition, the `:step` function which takes in
-the action and the model and defines how this action "acts" upon the 
-model. Finally, we note that the `:action` key defines a schema 
-describing all possible actions.
+## Application state and Oracles
 
-So, the obvious thing to think is that our component is able to send 
-messages to itself (called "actions") and the `:step` function controls
-how these messages cause updates. This is, in fact, exactly the case, 
-but let's belabor this a bit further.
+Application state is often a complex case. Oak essentially avoids 
+committing to anything about application state, but instead offers 
+another state-machine-like interface for handling application state 
+called the "Oracle".
 
-### State machines
+Essentially, an oracle is responsible for maintaining some kind of data 
+cache (anything from a map to a DataScript database), using it to 
+substantiate component `:query` requests during render steps, and then, 
+asynchronously, refreshing it given knowledge of all the queries which 
+were requested.
 
-A state machine is a way of describing how some piece of state evolves 
-over discrete time steps by way of "events". Given a state, `s` and such
-an event, `e`, we also need a function `(next e s)` which produces the 
-next state.
+The structure of the queries, the nature of the responses, the design of
+the cache, and the mechanism of refreshing it are all up to the design 
+of the Oracle.
 
-From here there are lots of things to examine. We can a state machine as
-turning a sequence of events into a `trajectory` on the state of spaces
+Some example Oracles might be
 
-```clojure
-(defn trajectory [initial-state event-sequence]
-  (reductions next initial-state event-sequence)) 
-```
+- A simple map where the queries are the keys and refreshing entails 
+  nothing more than updating the cache value from a global atom which is
+  updated periodically though some other mechanism.
+- HTTP requests to a backend API which are cached with a TTL. Queries are
+  initially substantiated with a placeholder and then refresh steps 
+  replace that placeholder in the cache with an actual successful fetch
+  or the appropriate error.
+- A DataScript database where queries are actual datalog queries
+- A combination of all of the above acting in parallel!
 
-We could also see `next` as giving us a set of "transition functions" on
-the state space, one for each action:
+## System actions
 
-```clojure
-(defn transition-fn [event]
-  (fn [state] (next event state)))
-```
+Missing from the architecture so far is the ability to trigger 
+system-level state transitions. In other words, if `:query` behaves a 
+bit like an HTTP `GET` request, what are `POST` and `PUT`?
 
-But the real thing to take home is how a state machine forms a 
-self-contained world atop just a single pure function. Many quite 
-sophisticated things can be modeled as a state machine and thus we take
-them as the basis for Oak.
+Oak has no built-in answer for this! Generally, one might think of 
+either (a) having an impure top-level `:step` function which interprets 
+local `:event`s as having global consequences, or (b) passing down a 
+CSP channel application-event bus as part of the local state which can 
+be used by some components to submit application-level events.
 
-Except, we rename `next` to `step`, `event` to `action`, and `state` to 
-`model` just to have our own nomenclature.
+# License
 
-## Composing state machines
+Copyright (c) 2016, Joseph Abrahamson
+All rights reserved.
 
-Up until this point composing components has been trivial. This is 
-because (a) we pretty much only had to pass our models "down" the tree
-and (b) because we didn't have to worry about changes.
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that the following conditions are 
+met:
 
-Once we add in the state machine technology we'll need to account for it 
-as well when composing components. To do this, let's build a list of 
-counters: the most sophisticated example so far!
+1. Redistributions of source code must retain the above copyright 
+   notice, this list of conditions and the following disclaimer.
 
-> It's worth noting that Oak *could* choose do a lot of the following 
-> composition automatically for you. Why do we leave the boilerplate to 
-> you? Well, first, combinators exist to automate this for you later, 
-> and second, these are matters of design and it's better leave them 
-> explicitly up to you, the user. Oak is almost always going to avoid 
-> magic as much as possible.
+2. Redistributions in binary form must reproduce the above copyright 
+   notice, this list of conditions and the following disclaimer in the 
+   documentation and/or other materials provided with the distribution.
 
-```clojure
-(def counter-set
-  (oak/make
-    {:name "Counter-Set"
-     :model [(oak/model counter)]
-     :action (s/cond-pre 
-               :new 
-               (s/pair s/Int 
-                       :index
-                       (s/cond-pre
-                         (s/eq :remove)
-                         (oak/action counter)
-                       :inner-action))
-     :step ...
-     :view ...}))
-```
+3. Neither the name of the copyright holder nor the names of its 
+   contributors may be used to endorse or promote products derived from 
+   this software without specific prior written permission.
 
-Let's stop here and examine what's going on. First, we note that our 
-model is defined as a vector of `counter` models. We'll represent our 
-counter set as an ordered set where we can index each counter by the 
-position of its "sub"-model in this vector.
-
-We also see that the `:action` schema has gotten a little complex. 
-Essentially, actions are now either `:new`, presumably generating a new
-counter for our vector, or a pair (a two element vector) of an index and 
-an "inner action". Inner actions are either `:remove` or an action from
-a `counter`.
-
-So it might be clear where we're going with this now, but for the 
-avoidance of all doubt: the set of actions of a component are (often) 
-the actions of all of its subcomponents adjoined to its own actions.
-
-Let's see how this plays out in the `:step` function
-
-```clojure
-  ...
-  :step
-  (fn [action model]
-    (match action
-      :new (conj model 0))
-      [index :remove] (vector-remove-at model index)
-      [index inner-action] (update model index (oak/stepf counter inner-action))))
-  ...
-```
-
-We've brought in Clojure's pattern matching macro for a little help 
-describing how to handle these actions, but there's not a whole lot 
-going on here. If the action is `:new` we conj on a new counter model. 
-If it's a pair we'll be acting on the sub-model at the cooresponding 
-index. If the action is `:remove` then we'll throw that sub-model away 
-(definition of `vector-remove-at` elided). Otherwise, we pass the 
-interpretation of the action down to the `step` function of `counter` 
-using a helper function `stepf` (which generates transition functions 
-from a component).
-
-Notably, again, this has the feeling of boilerplate (and indeed can and 
-is automated in common cases) but it's not too burdensome so long as we 
-take it little piece by little piece like so. The core concept of Oak is
-compositionality and so a lot of the emphasis ends up being on 
-composition.
-
-So, finally, let's take a look at what our view looks like.
-
-```clojure
-  ...
-  :view
-  (fn [model context]
-    (let [children (map-indexed
-                      (fn [ix submodel]
-                        (d/div {}
-                          (d/button {:onClick (fn [_] (oak/act context [ix :remove]))} "Remove")
-                          (counter 
-                            submodel 
-                            (oak/route context (fn [a] [ix a])))))
-                      model)]
-      (apply d/div {:class "counter-set"} 
-             (d/button {:onClick (fn [_] (oak/act context :new))} "New!")
-             children)))
-  ...
-```
-
-There are a few interesting things going on here. First, note that we
-build each child dynamically from our model which ends up being vector 
-of counter models. Second, note that we construct our `:remove` action
-by building a pair of the current index and the `:remove` keyword. 
-Third, and most important note how we use `oak/route` to *modify the 
-context* so that it prepends the index to *all* child actions.
-
-To be clear, `oak/route` lets us modify a context by providing a 
-"pre-processor" function which modifies actions in flight before passing
-them on. This is worth analyzing carefully.
-
-In particular, we note that as we move "down" the tree we see 
-composition arise in the *model* as us splitting it into little pieces,
-extracting submodels and passing them down. It's an act of 
-decomposition. On the other hand, at the same time we talk about how to
-build actions "up", combining them into super actions.
-
-If you look at it just right, you see that the actions and the models 
-compose in "opposite directions". This is exactly the nature of 
-combining state machines since actions are "inputs" and the models are 
-"outputs".
-
-## Running Oak UIs
-
-tk.
-
-## Interface State versus Application State
-
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS 
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED 
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
