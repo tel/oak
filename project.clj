@@ -14,11 +14,12 @@
   :doo {:paths {:chrome "chrome --no-sandbox"
                 :karma "node_modules/.bin/karma"}}
   :profiles
-  {:dev {:dependencies [[devcards "0.2.1-6"]]}}
+  {:dev {:dependencies [[devcards "0.2.1-6"]
+                        [org.clojure/core.match "0.3.0-alpha4"]]}}
 
   :cljsbuild
   {:builds [{:id "example"
-             :source-paths ["ex"]
+             :source-paths ["src" "ex"]
              :figwheel {:devcards true}
              :compiler {:main oak-ex.core
                         :asset-path "js/out"
