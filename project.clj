@@ -18,7 +18,8 @@
                         [org.clojure/core.match "0.3.0-alpha4"]
                         [funcool/httpurr "0.5.0"]
                         [datascript "0.15.0"]
-                        [funcool/promesa "1.1.1"]]}}
+                        [funcool/promesa "1.1.1"]
+                        [forest "0.1.4"]]}}
 
   :cljsbuild
   {:builds [{:id "example"

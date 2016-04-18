@@ -6,7 +6,9 @@
     [schema.core :as s]
     [oak.dom :as d]
     [devcards.util.edn-renderer :as edn-rend]
-    [promesa.core :as p])
+    [promesa.core :as p]
+    [forest.class-names :as forestcn]
+    [forest.macros :as forest :include-macros true])
   (:import
     (goog.i18n DateTimeFormat)))
 
@@ -48,6 +50,26 @@
                (oracle/refresh oracle cache queries oracle-submit)
                (component state result local-submit)))))))))
 
+(declare events-stylesheet
+         EventDemo DateCell DomainCell DomainIsLocal DomainIsOracle)
+(forest/defstylesheet events-stylesheet
+  [.EventDemo {:height     "300px"
+               :overflow-y "auto"}]
+  [.DateCell {:height      "20px"
+              :line-height "20px"
+              :padding     "3px 7px"
+              :background  "#eee"
+              :font-size   "0.6em"}]
+  [.DomainCell {:height         "20px"
+                :line-height    "20px"
+                :padding        "3px 7px"
+                :font-family    "Gill Sans"
+                :font-size      "12px"
+                :color          "#fff"
+                :text-transform "uppercase"}]
+  [.DomainIsLocal {:background "#1b6"}]
+  [.DomainIsOracle {:background "#b16"}])
+
 (def event-row
   (oak/make
     :state {:domain   (s/enum :local :oracle)
@@ -55,26 +77,16 @@
             :event    s/Any
             :expanded s/Bool}
     :view
-    (fn [state _submit]
+    (fn [{:keys [domain] :as state} _submit]
       (d/tr {}
-        (d/td {:style {:height     "20px"
-                       :lineHeight "20px"
-                       :padding    "3px 7px"
-                       :background "#eee"
-                       :fontSize   "0.6em"}}
+        (d/td {:className DateCell}
               (.format (DateTimeFormat. "KK:mm ss aa")
                        (:as-of state)))
-        (d/td {:style {:background    (case (:domain state)
-                                        :local "#1b6"
-                                        :oracle "#b16")
-                       :height        "20px"
-                       :lineHeight    "20px"
-                       :padding       "3px 7px"
-                       :fontFamily    "Gill Sans"
-                       :fontSize      "12px"
-                       :color         "#fff"
-                       :textTransform "uppercase"}}
-              (case (:domain state)
+        (d/td {:className (forestcn/class-names
+                            DomainCell
+                            {DomainIsLocal (= domain :local)
+                             DomainIsOracle (= domain :oracle)})}
+              (case domain
                 :local "local"
                 :oracle "oracle"))
         (d/td {}
@@ -87,8 +99,7 @@
     (fn [state _submit]
       (let [rows (for [event (reverse state)]
                    (event-row event))]
-        (d/div {:style {:height     "300px"
-                        :overflowY "auto"}}
+        (d/div {:className EventDemo}
           (d/table {}
             (apply d/tbody {} rows)))))))
 
