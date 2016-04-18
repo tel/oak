@@ -1,17 +1,21 @@
 (ns oak-ex.github
   (:require
+    [cognitect.transit :as transit]
     [cljs.core.match :refer-macros [match]]
     [devcards.core :as devcards :include-macros true]
     [oak.core :as oak]
     [oak.experimental.devcards :as oak-devcards]
     [oak.dom :as d]
     [schema.core :as s]
-    [datascript.core :as ds]
     [httpurr.client :as http]
     [httpurr.client.xhr :as xhr]
     [promesa.core :as p]
-    [devcards.util.edn-renderer :as edn-rend]
-    [oak.oracle :as oracle]))
+    [oak.oracle :as oracle]
+    [devcards.util.edn-renderer :as edn-rend]))
+
+(let [json-reader (transit/reader :json)]
+  (defn json-read [string]
+    (transit/read json-reader string)))
 
 (defn search-profile [name]
   (http/send! xhr/client
@@ -46,7 +50,13 @@
                      :onChange (fn [e] (submit [:set (.-value (.-target e))]))})
           (d/input {:type "submit"
                     :value "Search"}))
-        (edn-rend/html-edn result)))))
+        (let [{:keys [result]} result]
+          (when result
+            (if (= 200 (:status result))
+              (let [body (json-read (:body result))]
+                (d/div {}
+                  (edn-rend/html-edn body)))
+              "Error")))))))
 
 (def oracle
   (oracle/make
