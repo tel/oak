@@ -26,7 +26,7 @@
   {:builds [{:id "example"
              :source-paths ["src" "ex"]
              :figwheel {:devcards true}
-             :compiler {:main oak-ex.core
+             :compiler {:main oak.devcards
                         :asset-path "js/out"
                         :output-to "resources/public/js/example.js"
                         :output-dir "resources/public/js/out"

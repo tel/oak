@@ -65,11 +65,13 @@
             (let [quiescent-options (apply dissoc options +oak-option-keys+)]
               (q/component view quiescent-options)))})
 
-(defn make [& {:as options}]
+(defn make* [options]
   (let [options (merge +default-options+ options)
         {:keys [build-factory state event step merge query]} options
         factory (build-factory options)]
     (Component. state event step merge query factory)))
+
+(defn make [& {:as options}] (make* options))
 
 (defn static
   "Construct a *static* from a map of other components. Static components are
@@ -98,45 +100,45 @@
              routing-transform (fn [target event cont] (cont target event))}
       :as options}]
 
-  (apply
-    make
+  (let [core-design
+        {:state
+         (map-vals state subcomponent-map)
 
-    :state
-    (map-vals state subcomponent-map)
+         :event
+         (apply s/conditional
+                (mapcat (fn [[target subc]]
+                          [(fn [[name subev]] (= name target))
+                           (s/pair target :target (event subc) :subevent)])
+                        subcomponent-map))
 
-    :event
-    (apply s/conditional
-           (mapcat (fn [[target subc]]
-                     [(fn [[name subev]] (= name target))
-                      (s/pair target :target (event subc) :subevent)])
-                   subcomponent-map))
+         :step
+         (fn [[target event] state]
+           (routing-transform
+             target event
+             (fn [target event]
+               (update
+                 state target
+                 (step (get subcomponent-map target) event)))))
 
-    :step
-    (fn [[target event] state]
-      (routing-transform
-        target event
-        (fn [target event]
-          (update
-            state target
-            (step (get subcomponent-map target) event)))))
+         :query
+         (fn [state q]
+           (into {}
+                 (for [[target subc] subcomponent-map]
+                   [target (query subc (get state target) q)])))
 
-    :query
-    (fn [state q]
-      (into {}
-            (for [[target subc] subcomponent-map]
-              [target (query subc (get state target) q)])))
+         :view
+         (fn [[state result] submit]
+           (let [subviews
+                 (into {}
+                       (for [[target subc] subcomponent-map]
+                         (subc
+                           (get state target)
+                           (get result target)
+                           (fn [ev] (submit [target ev])))))]
+             (view-compositor subviews)))}]
 
-    :view
-    (fn [[state result] submit]
-      (let [subviews
-            (into {}
-                  (for [[target subc] subcomponent-map]
-                    (subc
-                      (get state target)
-                      (get result target)
-                      (fn [ev] (submit [target ev])))))]
-        (view-compositor subviews)))
-
-    (-> options
-        (dissoc :view-compositor)
-        (dissoc :routing-transform))))
+    ; Let the remaining options override
+    (make* (merge core-design
+                  (-> options
+                      (dissoc :view-compositor)
+                      (dissoc :routing-transform))))))

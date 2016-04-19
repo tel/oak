@@ -92,11 +92,13 @@
    :respond (fn [_cache _query] nil)
    :refresh (fn [_cache _queries _submit])})
 
-(defn make
-  [& {:as options}]
+(defn make*
+  [options]
   (let [options (merge +default-options+ options)
         {:keys [state event step respond refresh]} options]
     (Oracle. state event step respond refresh)))
+
+(defn make [& {:as options}] (make* options))
 
 (defn parallel
   [oracle-map]

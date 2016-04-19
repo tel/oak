@@ -1,4 +1,4 @@
-(ns oak-ex.github
+(ns oak.examples.github
   (:require
     [cognitect.transit :as transit]
     [cljs.core.match :refer-macros [match]]

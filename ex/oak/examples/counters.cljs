@@ -1,4 +1,4 @@
-(ns oak-ex.counters
+(ns oak.examples.counters
   (:require
     [cljs.core.match :refer-macros [match]]
     [devcards.core :as devcards :include-macros true]
