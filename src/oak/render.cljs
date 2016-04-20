@@ -6,28 +6,6 @@
   (:import
     (goog.async AnimationDelay)))
 
-;             (let [{:keys [state cache]} @total-state
-;                   {:keys [result queries]} (oracle/substantiate oracle cache component state)
-;                   oracle-submit (fn oracle-submit [event]
-;                                   ; Why use a promise here?
-;                                   ; We have to get state modifications out
-;                                   ; of the render cycle. Without tossing a
-;                                   ; delay on here they'll happen
-;                                   ; synchronously and this will throw render
-;                                   ; errors.
-;                                   (p/then
-;                                     (p/delay 0)
-;                                     (fn [_]
-;                                       (on-event [:oracle event])
-;                                       (swap! total-state update
-;                                              :cache (oracle/step oracle event)))))
-;                   local-submit (fn local-submit [event]
-;                                  (on-event [:local event])
-;                                  (swap! total-state update
-;                                         :state (oak/step component event)))]
-;               (oracle/refresh oracle cache queries oracle-submit)
-;               (component state result local-submit))
-
 (defn render
   [component
    & {:keys [oracle target
