@@ -13,6 +13,7 @@
              state-atom cache-atom
              on-event]
       :or {oracle (oracle/make)
+           on-event (fn [_target _event])
            target (.-body js/document)}}]
 
   (let [state (or state-atom (atom initial-state))
