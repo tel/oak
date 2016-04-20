@@ -1,7 +1,6 @@
 (ns oak.component
   (:require
     [schema.core :as s]
-    [oak.dom :as d]
     [quiescent.core :as q]))
 
 ; -----------------------------------------------------------------------------
@@ -67,19 +66,3 @@
     (Component. state event step merge query factory)))
 
 (defn make [& {:as options}] (make* options))
-
-; -----------------------------------------------------------------------------
-; Use
-
-(defn render [component initial-state element]
-  (let [state (atom initial-state)
-        render-fn (atom) ; tie this up later
-        submit! (fn [ev]
-                  (let [old-state @state
-                        new-state (step component ev old-state)]
-                    (reset! state new-state)
-                    (@render-fn)))
-        render! (fn []
-                  (q/render (component @state nil submit!) element))]
-    (reset! render-fn render!)
-    (render!)))

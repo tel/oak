@@ -1,7 +1,7 @@
 (ns oak.component.higher-order
   "Functions for constructing Components from sub-Components."
   (:require
-    [oak.internal.utils :refer :all]
+    [oak.internal.utils :as util]
     [oak.component :as oak]
     [oak.dom :as d]
     [schema.core :as s]))
@@ -38,7 +38,7 @@
 
   (let [core-design
         {:state
-         (map-vals oak/state subcomponent-map)
+         (util/map-vals oak/state subcomponent-map)
 
          :event
          (apply s/conditional
@@ -64,13 +64,13 @@
 
          :query
          (fn static-query [state q]
-           (map-kvs
+           (util/map-kvs
              (fn [target subc] (oak/query subc (get state target) q))
              subcomponent-map))
 
          :view
          (fn static-view [[state result] submit]
-           (let [subviews (map-kvs
+           (let [subviews (util/map-kvs
                             (fn [target subc]
                               (subc
                                 (get state target)

@@ -1,16 +1,16 @@
 (ns oak.oracle.higher-order
   "Functions for constructing Oracles from sub-Oracles."
   (:require
-    [oak.internal.utils :refer :all]
     [schema.core :as s]
     [schema.core :as s]
     [oak.component :as oak]
-    [oak.oracle :as oracle]))
+    [oak.oracle :as oracle]
+    [oak.internal.utils :as util]))
 
 (defn parallel
   [oracle-map]
   (oracle/make
-    :state (map-vals oracle-map oak/state)
+    :state (util/map-vals oracle-map oak/state)
     :event (apply s/cond-pre
                   (map (fn [[k v]] (s/pair k :index (oak/event v) :subevent))
                        oracle-map))
