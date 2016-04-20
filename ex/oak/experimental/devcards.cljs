@@ -2,7 +2,7 @@
   (:require
     [devcards.core :as devcards :include-macros true]
     [oak.oracle :as oracle]
-    [oak.core :as oak]
+    [oak.component :as oak]
     [schema.core :as s]
     [oak.dom :as d]
     [devcards.util.edn-renderer :as edn-rend]

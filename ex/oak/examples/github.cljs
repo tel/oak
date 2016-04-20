@@ -3,7 +3,7 @@
     [cognitect.transit :as transit]
     [cljs.core.match :refer-macros [match]]
     [devcards.core :as devcards :include-macros true]
-    [oak.core :as oak]
+    [oak.component :as oak]
     [oak.experimental.devcards :as oak-devcards]
     [oak.dom :as d]
     [schema.core :as s]

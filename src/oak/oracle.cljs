@@ -20,7 +20,7 @@
   mechanism for asynchronous data loading."
   (:require
     [schema.core :as s]
-    [oak.core :as oak]))
+    [oak.component :as oak]))
 
 ; TODO Oracles, being async, would benefit a lot from selective receives in
 ; the step function (a la Erlang). The heart of this is that a selective receive
@@ -99,32 +99,4 @@
     (Oracle. state event step respond refresh)))
 
 (defn make [& {:as options}] (make* options))
-
-(defn parallel
-  [oracle-map]
-  (make
-    :state (map-vals oracle-map state)
-    :event (apply s/cond-pre
-                  (map (fn [[k v]] (s/pair k :index (event v) :subevent))
-                       oracle-map))
-
-    :step
-    (fn [[index event] state]
-      (update state index (step (get oracle-map index) event)))
-
-    :respond
-    (fn [[index query]]
-      (respond (get oracle-map index) query))
-
-    :refresh
-    (fn [state queries submit]
-      (let [querysets (reduce
-                        (fn [sets [index subquery]]
-                          (update sets index conj subquery))
-                        {} queries)]
-        (for [[index local-queries] querysets]
-          (let [local-oracle (get oracle-map index)
-                local-state (get state index)
-                local-submit (fn [event] (submit [index event]))]
-            (refresh local-oracle local-state local-queries local-submit)))))))
 
