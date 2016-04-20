@@ -3,7 +3,8 @@
   (:require
     [quiescent.factory :as factory]
     [quiescent.dom :as dm :include-macros true]
-    [quiescent.dom.uncontrolled :as dm-u]))
+    [quiescent.dom.uncontrolled :as dm-u]
+    [clojure.string :as s]))
 
 (declare
   a abbr address area article aside audio b base bdi bdo big blockquote body br
@@ -30,3 +31,25 @@
 (def uinput (factory/factory (dm-u/uncontrolled-component "input" "input")))
 (def utextarea (factory/factory (dm-u/uncontrolled-component "textarea" "textarea")))
 (def uoption (factory/factory (dm-u/uncontrolled-component "option" "option")))
+
+; -----------------------------------------------------------------------------
+; Class name helper
+
+(defn- expand-as-class-list [it]
+  (cond
+    (nil? it) (list)
+    (false? it) (list)
+    (string? it) (list 1)
+    (keyword? it) (list (name it))
+    (map? it) (into
+                []
+                (comp
+                  (filter val)
+                  (cljs.core/map key)
+                  (mapcat expand-as-class-list))
+                it)
+    (coll? it) (mapcat expand-as-class-list it)))
+
+(defn class-names [& args]
+  (s/join " " (expand-as-class-list args)))
+

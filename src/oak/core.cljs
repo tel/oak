@@ -7,8 +7,16 @@
 ; -----------------------------------------------------------------------------
 ; Utilities
 
+(defn ^:private map-kvs [f hashmap]
+  (persistent!
+    (reduce
+      (fn [acc [k v]]
+        (assoc! acc k (f k v)))
+      (transient {})
+      hashmap)))
+
 (defn ^:private map-vals [f hashmap]
-  (into {} (map (fn [p] [(key p) (f (val p))])) hashmap))
+  (map-kvs (fn [_ v] (f v)) hashmap))
 
 ; -----------------------------------------------------------------------------
 ; Protocol and type
@@ -31,6 +39,7 @@
   (factory [_] factory)
 
   IFn
+  (-invoke [_] (factory (mergef nil nil) (fn [_])))
   (-invoke [_ st] (factory (mergef st nil) (fn [_])))
   (-invoke [_ st submit] (factory (mergef st nil) submit))
   (-invoke [_ st results submit] (factory (mergef st results) submit)))
@@ -120,21 +129,25 @@
                  state target
                  (step (get subcomponent-map target) event)))))
 
+         :merge
+         (fn [state result]
+           [state result])
+
          :query
          (fn [state q]
-           (into {}
-                 (for [[target subc] subcomponent-map]
-                   [target (query subc (get state target) q)])))
+           (map-kvs
+             (fn [target subc] (query subc (get state target) q))
+             subcomponent-map))
 
          :view
          (fn [[state result] submit]
-           (let [subviews
-                 (into {}
-                       (for [[target subc] subcomponent-map]
-                         (subc
-                           (get state target)
-                           (get result target)
-                           (fn [ev] (submit [target ev])))))]
+           (let [subviews (map-kvs
+                            (fn [target subc]
+                              (subc
+                                (get state target)
+                                (get result target)
+                                (fn [ev] (submit [target ev]))))
+                            subcomponent-map)]
              (view-compositor subviews)))}]
 
     ; Let the remaining options override
@@ -142,3 +155,14 @@
                   (-> options
                       (dissoc :view-compositor)
                       (dissoc :routing-transform))))))
+
+; -----------------------------------------------------------------------------
+; Use
+
+(defn render-once
+  "Render a component one time without initiating an update loop. All
+  requests must be satisfied and the submission function is a no-op."
+  [component state result element]
+  (q/render
+    (component state result (fn [ev] (println ev)))
+    element))
