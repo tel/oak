@@ -62,7 +62,13 @@
 (defn make* [options]
   (let [options (merge +default-options+ options)
         {:keys [build-factory state event step merge query]} options
-        factory (build-factory options)]
-    (Component. state event step merge query factory)))
+        factory (build-factory options)
+        event-validator (s/validator event)
+        state-validator (s/validator state)
+        validated-step (fn validated-step [event state]
+                         (state-validator
+                           (step (event-validator event)
+                                 (state-validator state))))]
+    (Component. state event validated-step merge query factory)))
 
 (defn make [& {:as options}] (make* options))
