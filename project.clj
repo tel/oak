@@ -13,8 +13,14 @@
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
   :doo {:paths {:chrome "chrome --no-sandbox"
                 :karma "node_modules/.bin/karma"}}
-  :deploy-repositories [["snapshots" :clojars]
-                        ["releases" :clojars]]
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag"]
+                  ["deploy" "clojars"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]]
 
   :profiles
   {:dev {:dependencies [[devcards "0.2.1-6"]
