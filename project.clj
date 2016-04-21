@@ -13,6 +13,8 @@
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
   :doo {:paths {:chrome "chrome --no-sandbox"
                 :karma "node_modules/.bin/karma"}}
+  :deploy-repositories [["releases" :clojars]]
+
   :profiles
   {:dev {:dependencies [[devcards "0.2.1-6"]
                         [org.clojure/core.match "0.3.0-alpha4"]
