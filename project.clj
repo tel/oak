@@ -1,4 +1,4 @@
-(defproject oak "0.1.2-SNAPSHOT"
+(defproject oak "0.1.2"
   :description "Drop-dead simple, super-compositional UI components"
   :url "http://github.com/tel/cljs-oak"
   :license {:name "Eclipse Public License"
