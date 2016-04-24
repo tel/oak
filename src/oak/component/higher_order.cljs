@@ -25,55 +25,51 @@
   parallel back to the originating subcomponents. Provide a
   :routing-transform function to choose how events are routed more
   specifically. It has a signature like (routing-transform target event
-  continue) where `target` is a key in your subcomponent map, `event` is the
+  continue) where `target` is a key in your subcomponent map, `action` is the
   event headed for that subcomponent, and `continue` is a callback of two
-  arguments, the target for the event and the event itself.
+  arguments, the target for the action and the action itself.
 
   Any other options are forwarded on to `make`."
   [subcomponent-map
    & {:keys [view-compositor routing-transform]
       :or   {view-compositor   (fn [views] (apply d/div {} (vals views)))
-             routing-transform (fn [target event cont] (cont target event))}
+             routing-transform (fn [target action cont] (cont target action))}
       :as   options}]
 
   (let [core-design
-        {:state
-         (util/map-vals oak/state subcomponent-map)
+        {:model
+         (util/map-vals oak/model subcomponent-map)
 
-         :event
+         :action
          (apply s/conditional
                 (mapcat (fn [[target subc]]
                           [(fn [[name subev]] (= name target))
-                           (s/pair target :target (oak/event subc) :subevent)])
+                           (s/pair target :target (oak/action subc) :subaction)])
                         subcomponent-map))
 
          :step
-         (fn static-step [[target event] state]
+         (fn static-step [[target action] model]
            (routing-transform
-             target event
-             (fn [target event]
+             target action
+             (fn [target action]
                (update
-                 state target
+                 model target
                  (oak/step
                    (get subcomponent-map target)
-                   event)))))
-
-         :merge
-         (fn [state result]
-           [state result])
+                   action)))))
 
          :query
-         (fn static-query [state q]
+         (fn static-query [model q]
            (util/map-kvs
-             (fn [target subc] (oak/query subc (get state target) q))
+             (fn [target subc] (oak/query subc (get model target) q))
              subcomponent-map))
 
          :view
-         (fn static-view [[state result] submit]
+         (fn static-view [{:keys [model result]} submit]
            (let [subviews (util/map-kvs
                             (fn [target subc]
                               (subc
-                                (get state target)
+                                (get model target)
                                 (get result target)
                                 (fn [ev] (submit [target ev]))))
                             subcomponent-map)]

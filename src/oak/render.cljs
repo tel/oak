@@ -9,15 +9,15 @@
 (defn render
   [component
    & {:keys [oracle target
-             initial-state initial-cache
-             state-atom cache-atom
+             initial-model initial-omodel
+             model-atom omodel-atom
              on-event]
       :or {oracle (oracle/make)
            on-event (fn [_target _event])
            target (.-body js/document)}}]
 
-  (let [state (or state-atom (atom initial-state))
-        cache (or cache-atom (atom initial-cache))
+  (let [model (or model-atom (atom initial-model))
+        omodel (or omodel-atom (atom initial-omodel))
         oracle-result (atom)
 
         alive? (atom)
@@ -28,26 +28,26 @@
 
             (submit-oracle! [ev]
               (on-event :oracle ev)
-              (let [new-cache (oracle/step oracle ev @cache)]
-                (when (not= @cache new-cache)
-                  (reset! cache new-cache)
+              (let [new-omodel (oracle/step oracle ev @omodel)]
+                (when (not= @omodel new-omodel)
+                  (reset! omodel new-omodel)
                   (dirty!))))
 
             (submit-local! [ev]
               (on-event :local ev)
-              (let [new-state (oak/step component ev @state)]
-                (when (not= @state new-state)
-                  (reset! state new-state)
+              (let [new-model (oak/step component ev @model)]
+                (when (not= @model new-model)
+                  (reset! model new-model)
                   (dirty!))))
 
             (update-oracle! []
-              (let [subst (oracle/substantiate oracle @cache component @state)]
+              (let [subst (oracle/substantiate oracle @omodel component @model)]
                 (reset! oracle-result (:result subst))
-                (oracle/refresh oracle @cache (:queries subst) submit-oracle!)))
+                (oracle/refresh oracle @omodel (:queries subst) submit-oracle!)))
 
             (force-render! []
               (update-oracle!)
-              (q/render (component @state @oracle-result submit-local!) target)
+              (q/render (component @model @oracle-result submit-local!) target)
               (reset! dirty? false))
 
             (render! [] (when @dirty? (force-render!)))

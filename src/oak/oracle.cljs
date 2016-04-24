@@ -8,10 +8,10 @@
   that's compatible with the explicit nature of Oak.
 
   In particular, an Oracle operates in stages. During the 'respond' stage,
-  the Oracle answers queries to the best of its ability atop a fixed 'state'
-  value. After the 'respond' stage the Oracle gets a chance to have a 'research'
-  stage updating the 'state' value in knowledge of all of the queries it
-  received during the 'respond' stage.
+  the Oracle answers queries to the best of its ability atop a fixed 'model'
+  value (it is, therefore, a kind of 'view'). After the 'respond' stage the
+  Oracle gets a chance to have a 'research' stage updating the 'model' value
+  in knowledge of all of the queries it received during the 'respond' stage.
 
   Notably, an Oracle must usually respond even before doing any research such
   that asynchronous Oracles will probably return empty responses at first.
@@ -31,53 +31,49 @@
 ; Oracles. TBI!
 
 ; -----------------------------------------------------------------------------
-; Utilities
-
-(defn ^:private map-vals [f hashmap]
-  (into {} (map (fn [p] [(key p) (f (val p))])) hashmap))
-
-; -----------------------------------------------------------------------------
 ; Type
 
 (defprotocol IOracle
-  (state [this])
-  (event [this])
+  (model [this])
+  (action [this])
+  (query [this])
   (stepf [this])
   (respondf [this])
   (refreshf [this]))
 
 (defn step
-  ([oracle action] (fn [state] (step oracle action state)))
-  ([oracle action state] ((stepf oracle) action state)))
+  ([oracle action] (fn [model] (step oracle action model)))
+  ([oracle action model] ((stepf oracle) action model)))
 
 (defn respond
-  ([oracle cache] (fn respond-to-query [query] (respond oracle cache query)))
-  ([oracle cache query] ((respondf oracle) cache query)))
+  ([oracle model] (fn respond-to-query [query] (respond oracle model query)))
+  ([oracle model query] ((respondf oracle) model query)))
 
 (defn refresh
-  [oracle state queries submit]
-  ((refreshf oracle) state queries submit))
+  [oracle model queries submit]
+  ((refreshf oracle) model queries submit))
 
 (defn substantiate
   "Given an Oak component, try to construct its query results."
-  [oracle cache component state]
-  (let [base-responder (respond oracle cache)
+  [oracle oracle-model component component-model]
+  (let [base-responder (respond oracle oracle-model)
         query-capture (atom #{})
         q (fn execute-query [query]
             (swap! query-capture conj query)
             (base-responder query))]
-    {:result (oak/query component state q)
+    {:result (oak/query component component-model q)
      :queries @query-capture}))
 
 ; -----------------------------------------------------------------------------
 ; Type
 
 (deftype Oracle
-  [state event stepf respondf refreshf]
+  [model action query stepf respondf refreshf]
 
   IOracle
-  (state [_] state)
-  (event [_] event)
+  (model [_] model)
+  (action [_] action)
+  (query [_] query)
   (stepf [_] stepf)
   (respondf [_] respondf)
   (refreshf [_] refreshf))
@@ -86,17 +82,26 @@
 ; Intro
 
 (def +default-options+
-  {:state (s/eq nil)
-   :event (s/cond-pre) ; never succeeds
-   :step  (fn default-step [_event state] state)
-   :respond (fn [_cache _query] nil)
-   :refresh (fn [_cache _queries _submit])})
+  {:model (s/eq nil)
+   :action (s/cond-pre) ; never succeeds
+   :query (s/cond-pre)
+   :step  (fn default-step [_action model] model)
+   :respond (fn [_model _query] nil)
+   :refresh (fn [_model _queries _submit])})
 
 (defn make*
   [options]
   (let [options (merge +default-options+ options)
-        {:keys [state event step respond refresh]} options]
-    (Oracle. state event step respond refresh)))
+        {:keys [model action query step respond refresh]} options
+        model-validator (s/validator model)
+        action-validator (s/validator action)
+        query-validator (s/validator query)
+        validated-respond (fn validated-respond [model q]
+                            (respond model (query-validator q)))
+        validated-step (fn validated-step [action model]
+                         (model-validator
+                           (step (action-validator action) model)))]
+    (Oracle. model action query validated-step validated-respond refresh)))
 
 (defn make [& {:as options}] (make* options))
 
