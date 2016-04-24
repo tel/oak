@@ -40,13 +40,14 @@
 ; Introduction
 
 (def +oak-option-keys+
-  [:model :action :step :view :query])
+  [:model :action :step :view :query :disable-validation])
 
 (def +default-options+
   {:model (s/eq nil)
    :action (s/cond-pre) ; never succeeds
    :query (fn [_model _q] nil)
    :step  (fn default-step [_action model] model)
+   :disable-validation false
 
    ; By default we use Quiescent, but we're not really married to it in any way.
    ; If you can build a factory in any way, e.g. a function from two args,
@@ -60,13 +61,16 @@
 
 (defn make* [options]
   (let [options (merge +default-options+ options)
-        {:keys [build-factory model action step query]} options
+        {:keys [build-factory model action step query disable-validation]} options
         factory (build-factory options)
         action-validator (s/validator action)
         model-validator (s/validator model)
         validated-step (fn validated-step [action model]
                          (model-validator
                            (step (action-validator action) model)))]
-    (Component. model action validated-step query factory)))
+    (Component.
+      model action
+      (if disable-validation step validated-step)
+      query factory)))
 
 (defn make [& {:as options}] (make* options))

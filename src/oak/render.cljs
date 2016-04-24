@@ -11,9 +11,9 @@
    & {:keys [oracle target
              initial-model initial-omodel
              model-atom omodel-atom
-             on-event]
+             on-action]
       :or {oracle (oracle/make)
-           on-event (fn [_target _event])
+           on-action (fn [_target _event])
            target (.-body js/document)}}]
 
   (let [model (or model-atom (atom initial-model))
@@ -22,19 +22,19 @@
 
         alive? (atom)
         current-timer (atom)
-        dirty? (atom true)]
+        dirty? (atom false)]
 
     (letfn [(dirty! [] (reset! dirty? true))
 
             (submit-oracle! [ev]
-              (on-event :oracle ev)
+              (on-action :oracle ev)
               (let [new-omodel (oracle/step oracle ev @omodel)]
                 (when (not= @omodel new-omodel)
                   (reset! omodel new-omodel)
                   (dirty!))))
 
             (submit-local! [ev]
-              (on-event :local ev)
+              (on-action :local ev)
               (let [new-model (oak/step component ev @model)]
                 (when (not= @model new-model)
                   (reset! model new-model)
@@ -59,9 +59,11 @@
 
             (stop! []
               (reset! alive? false)
+              (q/unmount target)
               (when-let [timer @current-timer]
                 (.stop timer)))]
 
+      (dirty!)
       (loop!)
       (reset! alive? true)
 

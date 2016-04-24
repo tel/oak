@@ -87,12 +87,13 @@
    :query (s/cond-pre)
    :step  (fn default-step [_action model] model)
    :respond (fn [_model _query] nil)
-   :refresh (fn [_model _queries _submit])})
+   :refresh (fn [_model _queries _submit])
+   :disable-validation false})
 
 (defn make*
   [options]
   (let [options (merge +default-options+ options)
-        {:keys [model action query step respond refresh]} options
+        {:keys [model action query step respond refresh disable-validation]} options
         model-validator (s/validator model)
         action-validator (s/validator action)
         query-validator (s/validator query)
@@ -101,7 +102,11 @@
         validated-step (fn validated-step [action model]
                          (model-validator
                            (step (action-validator action) model)))]
-    (Oracle. model action query validated-step validated-respond refresh)))
+    (Oracle.
+      model action query
+      (if disable-validation step validated-step)
+      (if disable-validation respond validated-respond)
+      refresh)))
 
 (defn make [& {:as options}] (make* options))
 
