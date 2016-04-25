@@ -63,7 +63,7 @@
               (asyncm/go-loop []
                 (let [[action-pair resolved-chan] (async/alts! [intent kill-chan])]
                   (when (not= resolved-chan kill-chan)
-                    (when-let [[_oracle_kw action] action-pair]
+                    (when-let [[_oracle-kw action] action-pair]
                       (on-action :oracle action)
                       (let [new-omodel (oracle/step oracle action @omodel)]
                         (when (not= @omodel new-omodel)
