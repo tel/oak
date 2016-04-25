@@ -7,9 +7,7 @@
   NOT YET IMPLEMENTED CORRECTLY! In particular, the pre-conditions that help
   this to work with cond-pre are not available yet."
   (:require
-    [schema.core :as s]
-    [schema.spec.collection :as collection]
-    [schema.spec.core :as spec]))
+    [schema.core :as s]))
 
 (defn cmdp
   "In the event that you are not using cond-pre, it is convenient to be able
@@ -36,3 +34,23 @@
   match the target schema as a precondition."
   [target-schema payload-schema]
   (s/pair target-schema :target payload-schema :payload))
+
+(defn cond-pair
+  "Given an arbitrary number of [a b] vectors as arguments, pair-sum is a schema
+  which matches pairs [x y] such that first a matches x and then b matches y
+  for some vector argument. As a shortcut, a may be a keyword which is
+  interpreted as keyword equality. This provides schema/cond-pre-like semantics to
+  vector pairs where normally one would need to use schema/conditional."
+  [& args]
+  (apply s/conditional
+         (mapcat (fn [[a b]]
+                   (let [a-schema (if (keyword? a)
+                                    (s/eq a)
+                                    a)
+                         a-conditional (fn cond-pair-head-precondition [x]
+                                         (when (and (vector? x)
+                                                  (= 2 (count x)))
+                                           (let [[fst _snd] x]
+                                             (nil? (s/check a-schema fst)))))]
+                     [a-conditional (s/pair a-schema :fst b :snd)]))
+                 args)))

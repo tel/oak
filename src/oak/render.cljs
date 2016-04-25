@@ -2,7 +2,10 @@
   (:require
     [oak.oracle :as oracle]
     [quiescent.core :as q]
-    [oak.component :as oak])
+    [oak.component :as oak]
+    [cljs.core.async :as async])
+  (:require-macros
+    [cljs.core.async.macros :as asyncm])
   (:import
     (goog.async AnimationDelay)))
 
@@ -11,14 +14,17 @@
    & {:keys [oracle target
              initial-model initial-omodel
              model-atom omodel-atom
+             intent
              on-action]
       :or {oracle (oracle/make)
+           intent (async/chan)
            on-action (fn [_target _event])
            target (.-body js/document)}}]
 
   (let [model (or model-atom (atom initial-model))
         omodel (or omodel-atom (atom initial-omodel))
-        oracle-result (atom)
+        result (atom)
+        kill-chan (async/chan)
 
         alive? (atom)
         current-timer (atom)
@@ -27,11 +33,7 @@
     (letfn [(dirty! [] (reset! dirty? true))
 
             (submit-oracle! [ev]
-              (on-action :oracle ev)
-              (let [new-omodel (oracle/step oracle ev @omodel)]
-                (when (not= @omodel new-omodel)
-                  (reset! omodel new-omodel)
-                  (dirty!))))
+              (async/put! intent [:oracle ev]))
 
             (submit-local! [ev]
               (on-action :local ev)
@@ -40,31 +42,45 @@
                   (reset! model new-model)
                   (dirty!))))
 
-            (update-oracle! []
+            (update-result! []
               (let [subst (oracle/substantiate oracle @omodel component @model)]
-                (reset! oracle-result (:result subst))
+                (reset! result (:result subst))
                 (oracle/refresh oracle @omodel (:queries subst) submit-oracle!)))
 
             (force-render! []
-              (update-oracle!)
-              (q/render (component @model @oracle-result submit-local!) target)
+              (update-result!)
+              (q/render (component @model @result submit-local!) target)
               (reset! dirty? false))
 
             (render! [] (when @dirty? (force-render!)))
 
-            (loop! []
+            (render-loop! []
               (render!)
-              (let [timer (doto (AnimationDelay. loop!) .start)]
+              (let [timer (doto (AnimationDelay. render-loop!) .start)]
                 (reset! current-timer timer)))
+
+            (oracle-loop! []
+              (asyncm/go-loop []
+                (let [[action-pair resolved-chan] (async/alts! [intent kill-chan])]
+                  (when (not= resolved-chan kill-chan)
+                    (when-let [[_oracle_kw action] action-pair]
+                      (on-action :oracle action)
+                      (let [new-omodel (oracle/step oracle action @omodel)]
+                        (when (not= @omodel new-omodel)
+                          (reset! omodel new-omodel)
+                          (dirty!)))
+                      (recur))))))
 
             (stop! []
               (reset! alive? false)
+              (async/put! kill-chan true)
               (q/unmount target)
               (when-let [timer @current-timer]
                 (.stop timer)))]
 
       (dirty!)
-      (loop!)
+      (oracle-loop!)
+      (render-loop!)
       (reset! alive? true)
 
       {:force-render! force-render!
@@ -74,3 +90,4 @@
        :current-timer current-timer
        :alive? alive?
        :stop! stop!})))
+

@@ -4,7 +4,8 @@
     [oak.internal.utils :as util]
     [oak.component :as oak]
     [oak.dom :as d]
-    [schema.core :as s]))
+    [schema.core :as s]
+    [oak.schema :as os]))
 
 ; -----------------------------------------------------------------------------
 ; Higher-order components
@@ -41,11 +42,8 @@
          (util/map-vals oak/model subcomponent-map)
 
          :action
-         (apply s/conditional
-                (mapcat (fn [[target subc]]
-                          [(fn [[name subev]] (= name target))
-                           (s/pair target :target (oak/action subc) :subaction)])
-                        subcomponent-map))
+         (apply os/cond-pair
+                (util/map-vals oak/action subcomponent-map))
 
          :step
          (fn static-step [[target action] model]
