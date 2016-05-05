@@ -1,8 +1,6 @@
 (ns oak.oracle.higher-order
   "Functions for constructing Oracles from sub-Oracles."
   (:require
-    [schema.core :as s]
-    [schema.core :as s]
     [oak.oracle :as oracle]
     [oak.internal.utils :as util]
     [oak.schema :as os]))
@@ -15,15 +13,29 @@
     :query (apply os/cond-pair (util/map-vals oracle/query oracle-map))
 
     :step
-    (fn [[index action] model]
+    (fn parallel-step [[index action] model]
       (update model index (oracle/step (get oracle-map index) action)))
 
+    :start
+    (fn parallel-start [submit]
+      (util/map-kvs
+        (fn [index subo]
+          (oracle/start subo (fn [action] (submit [index action]))))
+        oracle-map))
+
+    :stop
+    (fn parallel-stop [rts-map]
+      (util/map-kvs
+        (fn [index subo]
+          (oracle/stop subo (get rts-map index)))
+        oracle-map))
+
     :respond
-    (fn [model [index query]]
+    (fn parallel-respond [model [index query]]
       (oracle/respond (get oracle-map index) (get model index) query))
 
     :refresh
-    (fn [model queries submit]
+    (fn parallel-refresh [model queries submit]
       (let [querysets (reduce
                         (fn [sets [index subquery]]
                           (update sets index conj subquery))

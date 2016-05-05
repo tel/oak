@@ -6,8 +6,7 @@
     [cljs.core.async :as async])
   (:require-macros
     [cljs.core.async.macros :as asyncm])
-  (:import
-    (goog.async AnimationDelay)))
+  (:import goog.async.AnimationDelay))
 
 (defn render
   [component
@@ -28,7 +27,9 @@
 
         alive? (atom)
         current-timer (atom)
-        dirty? (atom false)]
+        dirty? (atom false)
+
+        oracle-rts (atom)]
 
     (letfn [(dirty! [] (reset! dirty? true))
 
@@ -74,11 +75,13 @@
             (stop! []
               (reset! alive? false)
               (async/put! kill-chan true)
+              (oracle/stop oracle @oracle-rts)
               (q/unmount target)
               (when-let [timer @current-timer]
                 (.stop timer)))]
 
       (dirty!)
+      (reset! oracle-rts (oracle/start oracle submit-oracle!))
       (oracle-loop!)
       (render-loop!)
       (reset! alive? true)

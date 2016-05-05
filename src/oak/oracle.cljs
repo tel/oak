@@ -38,12 +38,20 @@
   (action [this])
   (query [this])
   (stepf [this])
+  (startf [this])
+  (stopf [this])
   (respondf [this])
   (refreshf [this]))
 
 (defn step
   ([oracle action] (fn [model] (step oracle action model)))
   ([oracle action model] ((stepf oracle) action model)))
+
+(defn start
+  [this submit] ((startf this) submit))
+
+(defn stop
+  [this rts] ((stopf this) rts))
 
 (defn respond
   ([oracle model] (fn respond-to-query [query] (respond oracle model query)))
@@ -68,13 +76,15 @@
 ; Type
 
 (deftype Oracle
-  [model action query stepf respondf refreshf]
+  [model action query stepf startf stopf respondf refreshf]
 
   IOracle
   (model [_] model)
   (action [_] action)
   (query [_] query)
   (stepf [_] stepf)
+  (startf [_] startf)
+  (stopf [_] stopf)
   (respondf [_] respondf)
   (refreshf [_] refreshf))
 
@@ -86,6 +96,8 @@
    :action (s/cond-pre) ; never succeeds
    :query (s/cond-pre)
    :step  (fn default-step [_action model] model)
+   :start (fn default-start [_submit])
+   :stop (fn default-stop [_rts])
    :respond (fn [_model _query] nil)
    :refresh (fn [_model _queries _submit])
    :disable-validation false})
@@ -93,7 +105,9 @@
 (defn make*
   [options]
   (let [options (merge +default-options+ options)
-        {:keys [model action query step respond refresh disable-validation]} options
+        {:keys [model action query step start stop
+                respond refresh
+                disable-validation]} options
         model-validator (s/validator model)
         action-validator (s/validator action)
         query-validator (s/validator query)
@@ -105,6 +119,7 @@
     (Oracle.
       model action query
       (if disable-validation step validated-step)
+      start stop
       (if disable-validation respond validated-respond)
       refresh)))
 
