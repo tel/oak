@@ -39,7 +39,7 @@
   (cond
     (nil? it) (list)
     (false? it) (list)
-    (string? it) (list 1)
+    (string? it) (list it)
     (keyword? it) (list (name it))
     (map? it) (into
                 []

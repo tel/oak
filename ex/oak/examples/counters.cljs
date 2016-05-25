@@ -9,32 +9,32 @@
 
 (def counter
   (oak/make
-    :state s/Int
-    :event (s/enum :inc :dec)
+    :model s/Int
+    :action (s/enum :inc :dec)
     :step
-    (fn [event state]
-      (case event
-        :inc (inc state)
-        :dec (dec state)))
+    (fn [action model]
+      (case action
+        :inc (inc model)
+        :dec (dec model)))
     :view
-    (fn [state submit]
-      (let [clicker (fn clicker [event] (fn [_] (submit event)))]
+    (fn [{model :model} submit]
+      (let [clicker (fn clicker [action] (fn [_] (submit action)))]
         (d/div {}
           (d/button {:onClick (clicker :dec)} "-")
-          (d/span {} state)
+          (d/span {} model)
           (d/button {:onClick (clicker :inc)} "+"))))))
 
 (def counter-with-controls
   (oak/make
-    :state (oak/state counter)
-    :event (s/cond-pre :del (oak/event counter))
-    :step (fn [event state]
-            (case event
-              :del state
-              (oak/step counter event state)))
-    :view (fn [state submit]
+    :model (oak/model counter)
+    :action (s/cond-pre (s/enum :del) (oak/action counter))
+    :step (fn [action model]
+            (case action
+              :del model
+              (oak/step counter action model)))
+    :view (fn [{model :model} submit]
             (d/div {:style {:padding "10px 4px"}}
-              (counter state submit)
+              (counter model submit)
               (d/button {:onClick (fn [_] (submit :del))} "Delete")))))
 
 (defn ^:private delete-from-vec [v n]
@@ -47,39 +47,39 @@
 (def counter-set
   (let [counter counter-with-controls]
     (oak/make
-      :state [(oak/state counter)]
-      :event (s/cond-pre
+      :model [(oak/model counter)]
+      :action (s/cond-pre
                (s/eq :new)
-               (s/pair s/Int :index (oak/event counter) :subevent))
+               (s/pair s/Int :index (oak/action counter) :subaction))
 
       :step
-      (fn [event state]
-        (match event
-          :new (conj state 0)
-          [index :del] (delete-from-vec state index)
-          [index inner-event] (update state index
-                                      (oak/step counter inner-event))))
+      (fn [action model]
+        (match action
+          :new (conj model 0)
+          [index :del] (delete-from-vec model index)
+          [index inner-action] (update model index
+                                      (oak/step counter inner-action))))
 
       :view
-      (fn [state submit]
+      (fn [{model :model} submit]
         (d/div {}
           (d/button {:onClick (fn [_] (submit :new))} "New Counter")
           (apply d/div {}
-                 (for [[index substate] (map-indexed (fn [i v] [i v]) state)]
-                   (counter substate (fn [ev] (submit [index ev]))))))))))
+                 (for [[index submodel] (map-indexed (fn [i v] [i v]) model)]
+                   (counter submodel (fn [ev] (submit [index ev]))))))))))
 
-(defonce event-queue
-  (atom {:state #queue []}))
+(defonce action-queue
+  (atom {:model #queue []}))
 
 (declare single-counter)
 (devcards/defcard single-counter
   (oak-devcards/render counter-set)
-  {:state [] :cache {}}
-  {:on-event (fn [ev]
-               (swap! event-queue update
-                      :state #(oak-devcards/add-new-event % ev)))})
+  {:model [] :cache {}}
+  {:on-action (fn [ev]
+               (swap! action-queue update
+                      :model #(oak-devcards/add-new-action % ev)))})
 
-(declare event-set)
-(devcards/defcard event-set
-  (oak-devcards/render oak-devcards/event-demo)
-  event-queue)
+(declare action-set)
+(devcards/defcard action-set
+  (oak-devcards/render oak-devcards/action-demo)
+  action-queue)

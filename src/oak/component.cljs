@@ -43,8 +43,8 @@
   [:model :action :step :view :query :disable-validation])
 
 (def +default-options+
-  {:model (s/eq nil)
-   :action (s/cond-pre) ; never succeeds
+  {:model s/Any
+   :action s/Any
    :query (fn [_model _q] nil)
    :step  (fn default-step [_action model] model)
    :disable-validation false

@@ -20,35 +20,36 @@
 (defn search-profile [name]
   (http/send! xhr/client
               {:method :get
-               :url (str "https://api.github.com/users/" name)}))
+               :url    (str "https://api.github.com/users/" name)}))
 
 (def ex
   (oak/make
-    :state {:value s/Str :last-query (s/maybe s/Str)}
-    :event (s/cond-pre
-             (s/eq :query!)
-             (s/pair (s/eq :set) :keyword s/Str :name))
+    :model {:value                       s/Str
+            (s/optional-key :last-query) (s/maybe s/Str)}
+    :action (s/cond-pre
+              (s/eq :query!)
+              (s/pair (s/eq :set) :keyword s/Str :name))
     :step
-    (fn [event state]
-      (match event
-        :query! (do (println "state" state)
-                    (assoc state :last-query (:value state)))
-        [:set name] (assoc state :value name)))
+    (fn [action model]
+      (match action
+        :query! (do (println "model" model)
+                    (assoc model :last-query (:value model)))
+        [:set name] (assoc model :value name)))
 
     :query
     (fn [{:keys [last-query]} q]
       (if last-query
         {:last-query last-query
-         :result (q [:q last-query])}
+         :result     (q [:q last-query])}
         {:last-query nil}))
 
     :view
-    (fn [[state result] submit]
+    (fn [{:keys [model result]} submit]
       (d/div {}
         (d/form {:onSubmit (fn [e] (.preventDefault e) (submit :query!))}
-          (d/uinput {:value    (:value state)
+          (d/uinput {:value    (:value model)
                      :onChange (fn [e] (submit [:set (.-value (.-target e))]))})
-          (d/input {:type "submit"
+          (d/input {:type  "submit"
                     :value "Search"}))
         (let [{:keys [result]} result]
           (when result
@@ -60,44 +61,44 @@
 
 (def oracle
   (oracle/make
-    :state {:last-query s/Inst
-            :memory {s/Str s/Any}}
-    :step (fn [event state]
-            (match event
-              [:queried date] (assoc state :last-query date)
-              [:set query result] (assoc-in state [:memory query] result)))
-    :respond (fn [state [_ name]]
-               (get-in state [:memory name] {:meta :pending}))
-    :refresh (fn [state queries submit]
-               (let [last-query (:last-query state)
+    :model {:last-query s/Inst
+            :memory     {s/Str s/Any}}
+    :step (fn [action model]
+            (match action
+              [:queried date] (assoc model :last-query date)
+              [:set query result] (assoc-in model [:memory query] result)))
+    :respond (fn [model [_ name]]
+               (get-in model [:memory name] {:meta :pending}))
+    :refresh (fn [model queries submit]
+               (let [last-query (:last-query model)
                      now (js/Date.)
                      diff (.abs js/Math (- (.getTime now) (.getTime last-query)))]
                  (when (< 1000 diff)
                    (doseq [[_sub query] queries]
-                     (when-not (find (:memory state) query)
+                     (when-not (find (:memory model) query)
                        (submit [:queried (js/Date.)])
                        (p/then (search-profile query)
                                (fn [result]
                                  (submit [:set query result]))))))))))
 
-(defn oracle-initial-state []
+(defn oracle-initial-model []
   {:last-query (js/Date.)
-   :memory {}})
+   :memory     {}})
 
-(defonce event-queue
-  (atom {:state #queue []}))
+(defonce action-queue
+  (atom {:model #queue []}))
 
 (declare github-display)
 (devcards/defcard github-display
   (oak-devcards/render ex oracle)
-  {:state {} :cache (oracle-initial-state)}
-  {:on-event (fn [ev]
-               (match ev
-                 [:local [:set _]] nil
-                 :else (swap! event-queue update
-                              :state #(oak-devcards/add-new-event % ev))))})
+  {:model {} :cache (oracle-initial-model)}
+  {:on-action (fn [ev]
+                (match ev
+                  [:local [:set _]] nil
+                  :else (swap! action-queue update
+                               :model #(oak-devcards/add-new-action % ev))))})
 
-(declare event-set)
-(devcards/defcard event-set
-  (oak-devcards/render oak-devcards/event-demo)
-  event-queue)
+(declare action-set)
+(devcards/defcard action-set
+  (oak-devcards/render oak-devcards/action-demo)
+  action-queue)

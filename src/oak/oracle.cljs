@@ -92,9 +92,9 @@
 ; Intro
 
 (def +default-options+
-  {:model (s/eq nil)
-   :action (s/cond-pre) ; never succeeds
-   :query (s/cond-pre)
+  {:model s/Any
+   :action s/Any
+   :query s/Any
    :step  (fn default-step [_action model] model)
    :start (fn default-start [_submit])
    :stop (fn default-stop [_rts])
