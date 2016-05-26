@@ -6,7 +6,6 @@
     [oak.component :as oak]
     [oak.experimental.devcards :as oak-devcards]
     [oak.dom :as d]
-    [schema.core :as s]
     [httpurr.client :as http]
     [httpurr.client.xhr :as xhr]
     [promesa.core :as p]
@@ -24,11 +23,6 @@
 
 (def ex
   (oak/make
-    :model {:value                       s/Str
-            (s/optional-key :last-query) (s/maybe s/Str)}
-    :action (s/cond-pre
-              (s/eq :query!)
-              (s/pair (s/eq :set) :keyword s/Str :name))
     :step
     (fn [action model]
       (match action
@@ -61,12 +55,6 @@
 
 (def oracle
   (oracle/make
-    :model {:last-query s/Inst
-            :memory     {s/Str s/Any}}
-    :step (fn [action model]
-            (match action
-              [:queried date] (assoc model :last-query date)
-              [:set query result] (assoc-in model [:memory query] result)))
     :respond (fn [model [_ name]]
                (get-in model [:memory name] {:meta :pending}))
     :refresh (fn [model queries submit]

@@ -6,7 +6,6 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/clojurescript "1.8.40"]
                  [quiescent/quiescent "0.3.1"]
-                 [prismatic/schema "1.1.0"]
                  [org.clojure/core.async "0.2.374"]]
   :plugins [[lein-figwheel "0.5.1"]
             [lein-cljsbuild "1.1.3"]

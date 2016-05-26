@@ -4,13 +4,10 @@
     [devcards.core :as devcards :include-macros true]
     [oak.component :as oak]
     [oak.experimental.devcards :as oak-devcards]
-    [oak.dom :as d]
-    [schema.core :as s]))
+    [oak.dom :as d]))
 
 (def counter
   (oak/make
-    :model s/Int
-    :action (s/enum :inc :dec)
     :step
     (fn [action model]
       (case action
@@ -26,8 +23,6 @@
 
 (def counter-with-controls
   (oak/make
-    :model (oak/model counter)
-    :action (s/cond-pre (s/enum :del) (oak/action counter))
     :step (fn [action model]
             (case action
               :del model
@@ -47,11 +42,6 @@
 (def counter-set
   (let [counter counter-with-controls]
     (oak/make
-      :model [(oak/model counter)]
-      :action (s/cond-pre
-               (s/eq :new)
-               (s/pair s/Int :index (oak/action counter) :subaction))
-
       :step
       (fn [action model]
         (match action

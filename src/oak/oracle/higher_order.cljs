@@ -2,16 +2,11 @@
   "Functions for constructing Oracles from sub-Oracles."
   (:require
     [oak.oracle :as oracle]
-    [oak.internal.utils :as util]
-    [oak.schema :as os]))
+    [oak.internal.utils :as util]))
 
 (defn parallel
   [oracle-map]
   (oracle/make
-    :model (util/map-vals oracle/model oracle-map)
-    :action (apply os/cond-pair (util/map-vals oracle/action oracle-map))
-    :query (apply os/cond-pair (util/map-vals oracle/query oracle-map))
-
     :step
     (fn parallel-step [[index action] model]
       (update model index (oracle/step (get oracle-map index) action)))

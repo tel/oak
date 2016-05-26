@@ -3,7 +3,6 @@
     [devcards.core :as devcards :include-macros true]
     [oak.oracle :as oracle]
     [oak.component :as oak]
-    [schema.core :as s]
     [oak.dom :as d]
     [devcards.util.edn-renderer :as edn-rend]
     [promesa.core :as p]

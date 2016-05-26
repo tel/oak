@@ -1,24 +1,19 @@
 (ns oak.component
   (:require
-    [schema.core :as s]
     [quiescent.core :as q]))
 
 ; -----------------------------------------------------------------------------
 ; Protocol and type
 
 (defprotocol IComponent
-  (model [this])
-  (action [this])
   (queryf [this])
   (stepf [this])
   (factory [this]))
 
 (deftype Component
-  [model action stepf queryf factory]
+  [stepf queryf factory]
 
   IComponent
-  (model [_] model)
-  (action [_] action)
   (queryf [_] queryf)
   (stepf [_] stepf)
   (factory [_] factory)
@@ -40,14 +35,11 @@
 ; Introduction
 
 (def +oak-option-keys+
-  [:model :action :step :view :query :disable-validation])
+  [:step :view :query])
 
 (def +default-options+
-  {:model s/Any
-   :action s/Any
-   :query (fn [_model _q] nil)
+  {:query (fn [_model _q] nil)
    :step  (fn default-step [_action model] model)
-   :disable-validation false
 
    ; By default we use Quiescent, but we're not really married to it in any way.
    ; If you can build a factory in any way, e.g. a function from two args,
@@ -61,16 +53,8 @@
 
 (defn make* [options]
   (let [options (merge +default-options+ options)
-        {:keys [build-factory model action step query disable-validation]} options
-        factory (build-factory options)
-        action-validator (s/validator action)
-        model-validator (s/validator model)
-        validated-step (fn validated-step [action model]
-                         (model-validator
-                           (step (action-validator action) model)))]
-    (Component.
-      model action
-      (if disable-validation step validated-step)
-      query factory)))
+        {:keys [build-factory step query]} options
+        factory (build-factory options)]
+    (Component. step query factory)))
 
 (defn make [& {:as options}] (make* options))

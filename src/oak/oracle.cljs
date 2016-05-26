@@ -19,7 +19,6 @@
   allowed! All of the side effects occur during the 'research' phase offering a
   mechanism for asynchronous data loading."
   (:require
-    [schema.core :as s]
     [oak.component :as oak]))
 
 ; TODO Oracles, being async, would benefit a lot from selective receives in
@@ -34,8 +33,6 @@
 ; Type
 
 (defprotocol IOracle
-  (model [this])
-  (action [this])
   (query [this])
   (stepf [this])
   (startf [this])
@@ -76,12 +73,9 @@
 ; Type
 
 (deftype Oracle
-  [model action query stepf startf stopf respondf refreshf]
+  [stepf startf stopf respondf refreshf]
 
   IOracle
-  (model [_] model)
-  (action [_] action)
-  (query [_] query)
   (stepf [_] stepf)
   (startf [_] startf)
   (stopf [_] stopf)
@@ -92,36 +86,17 @@
 ; Intro
 
 (def +default-options+
-  {:model s/Any
-   :action s/Any
-   :query s/Any
-   :step  (fn default-step [_action model] model)
+  {:step  (fn default-step [_action model] model)
    :start (fn default-start [_submit])
    :stop (fn default-stop [_rts])
    :respond (fn [_model _query] nil)
-   :refresh (fn [_model _queries _submit])
-   :disable-validation false})
+   :refresh (fn [_model _queries _submit])})
 
 (defn make*
   [options]
   (let [options (merge +default-options+ options)
-        {:keys [model action query step start stop
-                respond refresh
-                disable-validation]} options
-        model-validator (s/validator model)
-        action-validator (s/validator action)
-        query-validator (s/validator query)
-        validated-respond (fn validated-respond [model q]
-                            (respond model (query-validator q)))
-        validated-step (fn validated-step [action model]
-                         (model-validator
-                           (step (action-validator action) model)))]
-    (Oracle.
-      model action query
-      (if disable-validation step validated-step)
-      start stop
-      (if disable-validation respond validated-respond)
-      refresh)))
+        {:keys [step start stop respond refresh]} options]
+    (Oracle. step start stop respond refresh)))
 
 (defn make [& {:as options}] (make* options))
 

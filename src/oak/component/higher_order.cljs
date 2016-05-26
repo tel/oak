@@ -3,9 +3,7 @@
   (:require
     [oak.internal.utils :as util]
     [oak.component :as oak]
-    [oak.dom :as d]
-    [schema.core :as s]
-    [oak.schema :as os]))
+    [oak.dom :as d]))
 
 ; -----------------------------------------------------------------------------
 ; Higher-order components
@@ -38,14 +36,7 @@
       :as   options}]
 
   (let [core-design
-        {:model
-         (util/map-vals oak/model subcomponent-map)
-
-         :action
-         (apply os/cond-pair
-                (util/map-vals oak/action subcomponent-map))
-
-         :step
+        {:step
          (fn static-step [[target action] model]
            (routing-transform
              target action
