@@ -4,7 +4,8 @@
     [cljs.core.match :refer-macros [match]]
     [devcards.core :as devcards :include-macros true]
     [oak.component :as oak]
-    [oak.experimental.devcards :as oak-devcards]
+    [oak.experimental.devcards :as oakdc]
+    [oak.experimental.devcards.ui :as oakdc-ui]
     [oak.dom :as d]
     [httpurr.client :as http]
     [httpurr.client.xhr :as xhr]
@@ -74,9 +75,19 @@
   {:last-query (js/Date.)
    :memory     {}})
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defonce actions (atom []))
+
 (declare display)
 (devcards/defcard display
-  (oak-devcards/render
-    ex {:oracle oracle})
+  (oakdc/render
+    ex {:oracle oracle
+        :on-action (fn [domain action]
+                (swap! actions conj [domain action]))})
   {:model {} :cache (oracle-initial-model)})
 
+(declare action-set)
+(devcards/defcard action-set
+  (oakdc/render oakdc-ui/action-list)
+  actions)

@@ -29,7 +29,6 @@
                         [funcool/httpurr "0.5.0"]
                         [datascript "0.15.0"]
                         [funcool/promesa "1.1.1"]
-                        [forest "0.1.4"]
                         [com.cognitect/transit-cljs "0.8.237"]]}}
 
   :cljsbuild

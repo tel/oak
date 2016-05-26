@@ -3,7 +3,8 @@
     [cljs.core.match :refer-macros [match]]
     [devcards.core :as devcards :include-macros true]
     [oak.component :as oak]
-    [oak.experimental.devcards :as oak-devcards]
+    [oak.experimental.devcards :as oakdc]
+    [oak.experimental.devcards.ui :as oakdc-ui]
     [oak.dom :as d]))
 
 (def counter
@@ -48,7 +49,7 @@
           :new (conj model 0)
           [index :del] (delete-from-vec model index)
           [index inner-action] (update model index
-                                      (oak/step counter inner-action))))
+                                       (oak/step counter inner-action))))
 
       :view
       (fn [model submit]
@@ -58,18 +59,19 @@
                  (for [[index submodel] (map-indexed (fn [i v] [i v]) model)]
                    (counter submodel (fn [ev] (submit [index ev]))))))))))
 
-;(defonce action-queue
-;  (atom {:model #queue []}))
-;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defonce actions (atom []))
+
 (declare single-counter)
 (devcards/defcard single-counter
-  (oak-devcards/render counter-set {})
-  []
-  #_{:on-action (fn [domain ev]
-               (swap! action-queue update
-                      :model (partial oak-devcards/add-new-action domain ev)))})
-;
-;(declare action-set)
-;(devcards/defcard action-set
-;  (oak-devcards/render oak-devcards/action-demo)
-;  action-queue)
+  (oakdc/render
+    counter-set
+    {:on-action (fn [domain action]
+                  (swap! actions conj [domain action]))})
+  [])
+
+(declare action-set)
+(devcards/defcard action-set
+  (oakdc/render oakdc-ui/action-list)
+  actions)
