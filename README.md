@@ -14,6 +14,12 @@ asynchronous global state.
 *Beta*. The Oak API is still under active investigation and is subject 
 to change. There is a public release on the horizon.
 
+### Roadmap
+
+- Oak works best when the shape of your models and actions is clear. With 
+  `core.spec` on the horizon we've removed `Schema` from Oak. Feel free to 
+  use it yourself, but Oak doesn't integrate with it.
+
 ## Try it out!
 
 This repository is both the library and a Devcards environment of 
