@@ -3,7 +3,7 @@
   :url "http://github.com/tel/oak"
   :license {:name "BSD-3"
             :url "https://opensource.org/licenses/BSD-3-Clause"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.8.40"]
                  [quiescent/quiescent "0.3.1"]
                  [org.clojure/core.match "0.3.0-alpha4"]
