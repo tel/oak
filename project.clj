@@ -1,8 +1,8 @@
 (defproject oak "0.2.0-SNAPSHOT"
   :description "Drop-dead simple, super-compositional UI components"
-  :url "http://github.com/tel/cljs-oak"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :url "http://github.com/tel/oak"
+  :license {:name "BSD-3"
+            :url "https://opensource.org/licenses/BSD-3-Clause"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/clojurescript "1.8.40"]
                  [quiescent/quiescent "0.3.1"]
