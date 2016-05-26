@@ -8,3 +8,6 @@
         (assoc! acc k (f k v)))
       (transient {})
       hashmap)))
+
+(defn map-vals [f hashmap]
+  (map-kvs (fn [_k v] (f v)) hashmap))

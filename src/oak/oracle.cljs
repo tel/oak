@@ -19,7 +19,8 @@
   allowed! All of the side effects occur during the 'research' phase offering a
   mechanism for asynchronous data loading."
   (:require
-    [oak.component :as oak]))
+    [oak.component :as oak]
+    [oak.internal.utils :as util]))
 
 ; TODO Oracles, being async, would benefit a lot from selective receives in
 ; the step function (a la Erlang). The heart of this is that a selective receive
@@ -65,7 +66,7 @@
         q (fn execute-query [query]
             (swap! query-capture conj query)
             (base-responder query))]
-    {:result (oak/query component component-model q)
+    {:result  (oak/query component component-model q)
      :queries @query-capture}))
 
 ; -----------------------------------------------------------------------------
@@ -85,9 +86,9 @@
 ; Intro
 
 (def +default-options+
-  {:step  (fn default-step [_action model] model)
-   :start (fn default-start [_submit])
-   :stop (fn default-stop [_rts])
+  {:step    (fn default-step [_action model] model)
+   :start   (fn default-start [_submit])
+   :stop    (fn default-stop [_rts])
    :respond (fn [_model _query] nil)
    :refresh (fn [_model _queries _submit])})
 
@@ -99,3 +100,42 @@
 
 (defn make [& {:as options}] (make* options))
 
+; -----------------------------------------------------------------------------
+; Higher-order oracles
+
+(defn parallel
+  [oracle-map]
+  (make
+    :step
+    (fn parallel-step [[index action] model]
+      (update model index (step (get oracle-map index) action)))
+
+    :start
+    (fn parallel-start [submit]
+      (util/map-kvs
+        (fn [index subo]
+          (start subo (fn [action] (submit [index action]))))
+        oracle-map))
+
+    :stop
+    (fn parallel-stop [rts-map]
+      (util/map-kvs
+        (fn [index subo]
+          (stop subo (get rts-map index)))
+        oracle-map))
+
+    :respond
+    (fn parallel-respond [model [index query]]
+      (respond (get oracle-map index) (get model index) query))
+
+    :refresh
+    (fn parallel-refresh [model queries submit]
+      (let [querysets (reduce
+                        (fn [sets [index subquery]]
+                          (update sets index conj subquery))
+                        {} queries)]
+        (for [[index local-queries] querysets]
+          (let [local-oracle (get oracle-map index)
+                local-model (get model index)
+                local-submit (fn [action] (submit [index action]))]
+            (refresh local-oracle local-model local-queries local-submit)))))))
