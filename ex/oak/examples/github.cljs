@@ -9,8 +9,7 @@
     [httpurr.client :as http]
     [httpurr.client.xhr :as xhr]
     [promesa.core :as p]
-    [oak.oracle :as oracle]
-    [devcards.util.edn-renderer :as edn-rend]))
+    [oak.oracle :as oracle]))
 
 (let [json-reader (transit/reader :json)]
   (defn json-read [string]
@@ -38,8 +37,6 @@
 
     :view
     (fn [model result submit]
-      (println "result " (keys result))
-      (println "result-result " (keys (get result :result)))
       (d/div {}
         (d/form {:onSubmit (fn [e] (.preventDefault e) (submit :query!))}
           (d/uinput {:value    (:value model)
@@ -77,11 +74,7 @@
   {:last-query (js/Date.)
    :memory     {}})
 
-(declare docs display)
-(devcards/defcard docs
-  "Gets your avatar image from GitHub. Asynchronous updates aren't properly
-  supported at the moment, so trigger a UI update after triggering a remote
-  call to see the update.")
+(declare display)
 (devcards/defcard display
   (oak-devcards/render
     ex {:oracle oracle})
