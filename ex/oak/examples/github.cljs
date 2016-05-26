@@ -82,9 +82,9 @@
 (declare display)
 (devcards/defcard display
   (oakdc/render
-    ex {:oracle oracle
+    ex {:oracle    oracle
         :on-action (fn [domain action]
-                (swap! actions conj [domain action]))})
+                     (swap! actions conj [domain action]))})
   {:model {} :cache (oracle-initial-model)})
 
 (declare action-set)
