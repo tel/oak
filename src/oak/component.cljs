@@ -35,7 +35,7 @@
 
   IFn
   (-invoke [_ model submit]
-    (factory model submit)))
+    (factory {:model model} submit)))
 
 (deftype QueryComponent
   [stepf queryf factory]
@@ -49,7 +49,7 @@
 
   IFn
   (-invoke [_ model result submit]
-    (factory model result submit)))
+    (factory {:model model :result result} submit)))
 
 (defn normalize
   "Convert a Component to a QueryComponent, opting in to all behavior with
@@ -68,22 +68,31 @@
   [:step :view :query])
 
 (def ^:private +default-options+
-  {:step  (fn default-step [_action model] model)
-
-   ; If no query is provided then we will, by default, construct a basic
-   ; Component. If one *is* provided we expect that the view function will
-   ; receive the result value and then generate a QueryComponent.
-   :query nil
+  {:step
+   (fn default-step [_action model] model)
 
    ; By default we use Quiescent, but we're not really married to it in any way.
    ; If you can build a factory in any way, e.g. a function from two args,
    ; the model and the submit function, then you're good! For best
    ; performance, use a Quiescent-style shouldComponentUpdate which assumes
    ; the first arg is all of the state.
+
    :build-factory
-          (fn [{:keys [view] :as options}]
-            (let [quiescent-options (apply dissoc options +oak-option-keys+)]
-              (q/component view quiescent-options)))})
+   (fn [{:keys [view] :as options}]
+     (let [quiescent-options (apply dissoc options +oak-option-keys+)]
+       (if (nil? (find options :query))
+
+         ; simple view
+         (q/component
+           (fn quiescent-view [context submit]
+             (view (:model context) submit))
+           quiescent-options)
+
+         ; queried view
+         (q/component
+           (fn quiescent-view [context submit]
+             (view (:model context) (:result context) submit))
+           quiescent-options))))})
 
 (defn make* [options]
   (let [options (merge +default-options+ options)
