@@ -81,6 +81,82 @@ To provide for this we use the `submit` function given to our `view` function
 Calling the passed submit function causes the component's state to update 
 synchronously.
 
+### Composing components
+
+Oak components are not much more than dumb collections of the parts we've seen 
+thus far. Use the `oak/step` function to access the state machine of a 
+component and use its `IFn` instance to render its view.
+
+For instance, let's put two counters together. As a constant component this 
+is trivial.
+
+```
+(oak/make
+  :view (fn [model _]
+          (p/div {} 
+            ; counter is just a var def'd with the previous component
+            (counter (:counter-one model))
+            (counter (:counter-two model)))))
+```
+
+The aggregate component's model is the aggregate of the subcomponent's models!
+We'll do the same to manage the dynamics in two steps: first we create a 
+combined `:step` function and then we'll pass modified `submit` functions to
+our subcomponents.
+
+The aggregate component's actions will be tuples like `[:one a1]` and 
+`[:two a2]`. We'll use `core.match` to destructure these.
+
+```
+(oak/make
+  :step (fn [action model]
+           (match action
+              [:one sub-action] (update model :counter-one (oak/step sub-action))
+              [:two sub-action] (update model :counter-two (oak/step sub-action))))
+  :view ...
+```
+
+While there is a little bit of boilerplate here, when action routing is truly 
+this dumb we can use higher-order component combinators to build it quickly. 
+For now, however, we'll do it by hand to emphasize just how simple it is.
+
+Now, finally, let's wire up the UI. We'll transform the submit functions we 
+pass to each subcomponent so that the subcomponents will end up submitting
+actions appropriate for our `:step` function.
+
+```
+(oak/make
+  :step ...
+  :view (fn [model submit]
+          (p/div {} 
+            (counter (:counter-one model) (fn [a] (submit [:one a])))
+            (counter (:counter-two model) (fn [a] (submit [:two a]))))))
+```
+
+### Rendering components
+
+Render your component with the `render` function. As a matter of course, Oak 
+will batch updates to fire them all during `requestAnimationFrame` updates.
+
+```
+(require '[oak.render :as render])
+
+(render/render two-components)
+```
+
+You can pass options to expose more of the inner rendering details or to fire 
+a callback upon each update.
+
+```
+(render/render 
+  two-components 
+  {:on-action (fn [domain action] (println domain "<--" action))}
+```
+
+For simple components like these the `domain` argument can be ignored as it 
+will always be `:local` to indicate that the action arose from the component
+tree itself.
+
 *And that's pretty much all you need to know to get started!*
 
 # License
