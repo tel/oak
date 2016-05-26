@@ -5,7 +5,7 @@
     [oak.dom :as d]))
 
 ; -----------------------------------------------------------------------------
-; Protocol and type
+; Protocols
 
 (defprotocol IComponent
   (stepf [this])
@@ -22,6 +22,9 @@
   ([it] (stepf it))
   ([it action] (fn transition-fn [model] (step it action model)))
   ([it action model] ((stepf it) action model)))
+
+; -----------------------------------------------------------------------------
+; Types
 
 (deftype Component
   [stepf factory]
@@ -61,10 +64,10 @@
 ; -----------------------------------------------------------------------------
 ; Introduction
 
-(def +oak-option-keys+
+(def ^:private +oak-option-keys+
   [:step :view :query])
 
-(def +default-options+
+(def ^:private +default-options+
   {:step  (fn default-step [_action model] model)
 
    ; If no query is provided then we will, by default, construct a basic

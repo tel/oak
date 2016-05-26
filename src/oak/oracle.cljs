@@ -85,7 +85,7 @@
 ; -----------------------------------------------------------------------------
 ; Intro
 
-(def +default-options+
+(def ^:private +default-options+
   {:step    (fn default-step [_action model] model)
    :start   (fn default-start [_submit])
    :stop    (fn default-stop [_rts])
