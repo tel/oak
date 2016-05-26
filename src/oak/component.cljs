@@ -6,30 +6,45 @@
 ; Protocol and type
 
 (defprotocol IComponent
-  (queryf [this])
   (stepf [this])
   (factory [this]))
 
+(defprotocol IQueryComponent
+  (queryf [this]))
+
+(defn query
+  ([it] (queryf it))
+  ([it model q] ((queryf it) model q)))
+
+(defn step
+  ([it] (stepf it))
+  ([it action] (fn transition-fn [model] (step it action model)))
+  ([it action model] ((stepf it) action model)))
+
 (deftype Component
-  [stepf queryf factory]
+  [stepf factory]
 
   IComponent
-  (queryf [_] queryf)
   (stepf [_] stepf)
   (factory [_] factory)
 
   IFn
-  (-invoke [_] (factory {} (fn [_])))
-  (-invoke [_ st] (factory {:model st} (fn [_])))
-  (-invoke [_ st submit] (factory {:model st} submit))
-  (-invoke [_ st result submit] (factory {:model st :result result} submit)))
+  (-invoke [_ model submit]
+    (factory model submit)))
 
-(defn query
-  [it model q] ((queryf it) model q))
+(deftype QueryComponent
+  [stepf queryf factory]
 
-(defn step
-  ([it action] (fn transition-fn [model] (step it action model)))
-  ([it action model] ((stepf it) action model)))
+  IComponent
+  (stepf [_] stepf)
+  (factory [_] factory)
+
+  IQueryComponent
+  (queryf [_] queryf)
+
+  IFn
+  (-invoke [_ model result submit]
+    (factory model result submit)))
 
 ; -----------------------------------------------------------------------------
 ; Introduction
@@ -38,8 +53,12 @@
   [:step :view :query])
 
 (def +default-options+
-  {:query (fn [_model _q] nil)
-   :step  (fn default-step [_action model] model)
+  {:step  (fn default-step [_action model] model)
+
+   ; If no query is provided then we will, by default, construct a basic
+   ; Component. If one *is* provided we expect that the view function will
+   ; receive the result value and then generate a QueryComponent.
+   :query nil
 
    ; By default we use Quiescent, but we're not really married to it in any way.
    ; If you can build a factory in any way, e.g. a function from two args,
@@ -55,6 +74,8 @@
   (let [options (merge +default-options+ options)
         {:keys [build-factory step query]} options
         factory (build-factory options)]
-    (Component. step query factory)))
+    (if (nil? query)
+      (Component. step factory)
+      (QueryComponent. step query factory))))
 
 (defn make [& {:as options}] (make* options))

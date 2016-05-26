@@ -14,7 +14,7 @@
         :inc (inc model)
         :dec (dec model)))
     :view
-    (fn [{model :model} submit]
+    (fn [model submit]
       (let [clicker (fn clicker [action] (fn [_] (submit action)))]
         (d/div {}
           (d/button {:onClick (clicker :dec)} "-")
@@ -27,7 +27,7 @@
             (case action
               :del model
               (oak/step counter action model)))
-    :view (fn [{model :model} submit]
+    :view (fn [model submit]
             (d/div {:style {:padding "10px 4px"}}
               (counter model submit)
               (d/button {:onClick (fn [_] (submit :del))} "Delete")))))
@@ -51,25 +51,25 @@
                                       (oak/step counter inner-action))))
 
       :view
-      (fn [{model :model} submit]
+      (fn [model submit]
         (d/div {}
           (d/button {:onClick (fn [_] (submit :new))} "New Counter")
           (apply d/div {}
                  (for [[index submodel] (map-indexed (fn [i v] [i v]) model)]
                    (counter submodel (fn [ev] (submit [index ev]))))))))))
 
-(defonce action-queue
-  (atom {:model #queue []}))
-
+;(defonce action-queue
+;  (atom {:model #queue []}))
+;
 (declare single-counter)
 (devcards/defcard single-counter
-  (oak-devcards/render counter-set)
-  {:model [] :cache {}}
-  {:on-action (fn [ev]
+  (oak-devcards/render counter-set {})
+  []
+  #_{:on-action (fn [domain ev]
                (swap! action-queue update
-                      :model #(oak-devcards/add-new-action % ev)))})
-
-(declare action-set)
-(devcards/defcard action-set
-  (oak-devcards/render oak-devcards/action-demo)
-  action-queue)
+                      :model (partial oak-devcards/add-new-action domain ev)))})
+;
+;(declare action-set)
+;(devcards/defcard action-set
+;  (oak-devcards/render oak-devcards/action-demo)
+;  action-queue)

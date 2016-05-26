@@ -33,7 +33,6 @@
 ; Type
 
 (defprotocol IOracle
-  (query [this])
   (stepf [this])
   (startf [this])
   (stopf [this])

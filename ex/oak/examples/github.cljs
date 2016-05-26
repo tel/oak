@@ -26,8 +26,7 @@
     :step
     (fn [action model]
       (match action
-        :query! (do (println "model" model)
-                    (assoc model :last-query (:value model)))
+        :query! (assoc model :last-query (:value model))
         [:set name] (assoc model :value name)))
 
     :query
@@ -38,25 +37,30 @@
         {:last-query nil}))
 
     :view
-    (fn [{:keys [model result]} submit]
+    (fn [model result submit]
+      (println "result " (keys result))
+      (println "result-result " (keys (get result :result)))
       (d/div {}
         (d/form {:onSubmit (fn [e] (.preventDefault e) (submit :query!))}
           (d/uinput {:value    (:value model)
                      :onChange (fn [e] (submit [:set (.-value (.-target e))]))})
           (d/input {:type  "submit"
                     :value "Search"}))
-        (let [{:keys [result]} result]
-          (when result
-            (if (= 200 (:status result))
-              (let [body (json-read (:body result))]
-                (d/div {}
-                  (edn-rend/html-edn body)))
-              "Error")))))))
+        (when-let [result (get result :result)]
+          (if-not (= 200 (:status result))
+            (d/p {} (str "Status: " result))
+            (d/img {:src    (get (json-read (:body result)) "avatar_url")
+                    :width  150
+                    :height 150})))))))
 
 (def oracle
   (oracle/make
     :respond (fn [model [_ name]]
                (get-in model [:memory name] {:meta :pending}))
+    :step (fn [action model]
+            (match action
+              [:queried date] (assoc model :last-query date)
+              [:set query result] (assoc-in model [:memory query] result)))
     :refresh (fn [model queries submit]
                (let [last-query (:last-query model)
                      now (js/Date.)
@@ -73,20 +77,13 @@
   {:last-query (js/Date.)
    :memory     {}})
 
-(defonce action-queue
-  (atom {:model #queue []}))
+(declare docs display)
+(devcards/defcard docs
+  "Gets your avatar image from GitHub. Asynchronous updates aren't properly
+  supported at the moment, so trigger a UI update after triggering a remote
+  call to see the update.")
+(devcards/defcard display
+  (oak-devcards/render
+    ex {:oracle oracle})
+  {:model {} :cache (oracle-initial-model)})
 
-(declare github-display)
-(devcards/defcard github-display
-  (oak-devcards/render ex oracle)
-  {:model {} :cache (oracle-initial-model)}
-  {:on-action (fn [ev]
-                (match ev
-                  [:local [:set _]] nil
-                  :else (swap! action-queue update
-                               :model #(oak-devcards/add-new-action % ev))))})
-
-(declare action-set)
-(devcards/defcard action-set
-  (oak-devcards/render oak-devcards/action-demo)
-  action-queue)
